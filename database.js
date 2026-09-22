@@ -1,6 +1,7 @@
 const fs = require("fs");
 
 const DB_FILE = "./anime-db.json";
+const IS_VERCEL = process.env.VERCEL === "1";
 
 const defaultDB = {
   anime: [],
@@ -8,7 +9,13 @@ const defaultDB = {
   movies: []
 };
 
-if (!fs.existsSync(DB_FILE)) {
+let memoryDB = {
+  anime: [],
+  episodes: [],
+  movies: []
+};
+
+if (!IS_VERCEL && !fs.existsSync(DB_FILE)) {
   fs.writeFileSync(
     DB_FILE,
     JSON.stringify(defaultDB, null, 2)
@@ -16,37 +23,29 @@ if (!fs.existsSync(DB_FILE)) {
 }
 
 function loadDB() {
+  if (IS_VERCEL) {
+    return memoryDB;
+  }
+
   const data = JSON.parse(
     fs.readFileSync(DB_FILE, "utf8")
   );
 
-  // Backward-compatible migration
-  if (!Array.isArray(data.anime)) {
-    data.anime = [];
-  }
-
-  if (!Array.isArray(data.episodes)) {
-    data.episodes = [];
-  }
-
-  if (!Array.isArray(data.movies)) {
-    data.movies = [];
-  }
+  if (!Array.isArray(data.anime)) data.anime = [];
+  if (!Array.isArray(data.episodes)) data.episodes = [];
+  if (!Array.isArray(data.movies)) data.movies = [];
 
   return data;
 }
 
 function saveDB(data) {
-  if (!Array.isArray(data.anime)) {
-    data.anime = [];
-  }
+  if (!Array.isArray(data.anime)) data.anime = [];
+  if (!Array.isArray(data.episodes)) data.episodes = [];
+  if (!Array.isArray(data.movies)) data.movies = [];
 
-  if (!Array.isArray(data.episodes)) {
-    data.episodes = [];
-  }
-
-  if (!Array.isArray(data.movies)) {
-    data.movies = [];
+  if (IS_VERCEL) {
+    memoryDB = data;
+    return;
   }
 
   fs.writeFileSync(
@@ -55,9 +54,10 @@ function saveDB(data) {
   );
 }
 
-console.log("Anime database initialized successfully.");
+console.log(
+  IS_VERCEL
+    ? "Anime database running in Vercel memory mode."
+    : "Anime database initialized successfully."
+);
 
-module.exports = {
-  loadDB,
-  saveDB
-};
+module.exports = { loadDB, saveDB };
