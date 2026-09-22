@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0b0b0b;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    .player {
+      width: 100%;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-height: 70vh;
+      background: #000;
+    }
+
+    .status {
+      padding: 10px 0;
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .movie {
+      margin-top: 20px;
+    }
+
+    .movie img {
+      width: 180px;
+      max-width: 45%;
+      border-radius: 8px;
+      float: left;
+      margin: 0 18px 12px 0;
+    }
+
+    .movie h1 {
+      margin-top: 0;
+      font-size: 25px;
+    }
+
+    .description {
+      color: #bbb;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .clear {
+      clear: both;
+    }
+
+    .error {
+      color: #ff7777;
+      padding: 15px 0;
+    }
+
+    @media (max-width: 600px) {
+      .movie img {
+        width: 130px;
+      }
+
+      .movie h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <a class="back" href="/">← Back</a>
+
+    <div class="player">
+      <video id="video" controls playsinline></video>
+    </div>
+
+    <div id="status" class="status">
+      Loading movie...
+    </div>
+
+    <div id="movie" class="movie"></div>
+
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const movieId = params.get("id");
+
+const video = document.getElementById("video");
+const status = document.getElementById("status");
+const movieBox = document.getElementById("movie");
+
+let hls = null;
+
+if (!movieId) {
+  status.textContent = "Movie ID missing.";
+} else {
+  loadMovie();
+}
+
+async function loadMovie() {
+  try {
+    status.textContent = "Loading movie information...";
+
+    const movieResponse = await fetch(
+      "/api/movies/" + encodeURIComponent(movieId)
+    );
+
+    const movieData = await movieResponse.json();
+
+    if (!movieData.status) {
+      throw new Error(movieData.message || "Movie not found");
+    }
+
+    const movie = movieData.data;
+
+    document.title = movie.title || "Movie";
+
+    movieBox.innerHTML = `
+      ${movie.poster ? `<img src="${escapeHtml(movie.poster)}" alt="">` : ""}
+      <h1>${escapeHtml(movie.title || "Untitled")}</h1>
+      <div class="description">${escapeHtml(movie.description || "")}</div>
+      <div class="clear"></div>
+    `;
+
+    status.textContent = "Loading video...";
+
+    const streamResponse = await fetch(
+      "/api/movies/" +
+      encodeURIComponent(movieId) +
+      "/stream"
+    );
+
+    const streamData = await streamResponse.json();
+
+    if (!streamData.status || !streamData.video_url) {
+      throw new Error(
+        streamData.message || "Movie video source not available"
+      );
+    }
+
+    const videoUrl =
+      "/api/hls-proxy?url=" +
+      encodeURIComponent(streamData.video_url);
+
+    playVideo(videoUrl);
+
+  } catch (error) {
+    console.error(error);
+    status.innerHTML =
+      '<span class="error">' +
+      escapeHtml(error.message) +
+      '</span>';
+  }
+}
+
+function playVideo(url) {
+
+  if (Hls.isSupported()) {
+
+    hls = new Hls({
+      maxBufferLength: 60,
+      maxMaxBufferLength: 120,
+      backBufferLength: 30,
+
+      manifestLoadingMaxRetry: 5,
+      manifestLoadingRetryDelay: 1000,
+      manifestLoadingMaxRetryTimeout: 10000,
+
+      fragLoadingMaxRetry: 6,
+      fragLoadingRetryDelay: 1000,
+      fragLoadingMaxRetryTimeout: 10000,
+
+      levelLoadingMaxRetry: 5,
+      levelLoadingRetryDelay: 1000,
+      levelLoadingMaxRetryTimeout: 10000
+    });
+
+    hls.loadSource(url);
+    hls.attachMedia(video);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+      status.textContent = "Video ready.";
+    });
+
+    hls.on(Hls.Events.ERROR, function(event, data) {
+
+      console.warn("HLS error:", data);
+
+      if (!data.fatal) return;
+
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        status.textContent = "Reconnecting...";
+
+        setTimeout(() => {
+          try {
+            hls.startLoad();
+          } catch (e) {
+            console.error(e);
+          }
+        }, 1000);
+
+        return;
+      }
+
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        try {
+          hls.recoverMediaError();
+          status.textContent = "Video ready.";
+        } catch (e) {
+          console.error(e);
+        }
+
+        return;
+      }
+
+      status.textContent = "Video playback error.";
+    });
+
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+
+    video.src = url;
+
+    video.addEventListener("loadedmetadata", function() {
+      status.textContent = "Video ready.";
+    });
+
+  } else {
+
+    status.textContent =
+      "This browser does not support HLS playback.";
+  }
+
+  video.addEventListener("playing", function() {
+    status.textContent = "Video playing.";
+  });
+
+  video.addEventListener("waiting", function() {
+    status.textContent = "Buffering...";
+  });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+</script>
+
+</body>
+</html>

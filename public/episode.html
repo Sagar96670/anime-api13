@@ -1,0 +1,2319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch Episode</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0f1117;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      background: #171a23;
+      border-bottom: 1px solid #292d38;
+      padding: 18px;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: auto;
+    }
+
+    .player {
+      margin-top: 25px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      max-height: 650px;
+      display: block;
+    }
+
+    .info {
+      margin-top: 20px;
+      background: #171a23;
+      border: 1px solid #292d38;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 15px;
+      color: white;
+      text-decoration: none;
+      background: #292d38;
+      padding: 10px 15px;
+      border-radius: 8px;
+    }
+
+    #status {
+      color: #aeb4c2;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style id="anime-premium-player-ui">
+/* ANIME_PLAYER_PREMIUM_UI */
+
+:root {
+  --player-bg: #08090d;
+  --player-panel: rgba(18, 20, 28, 0.94);
+  --player-border: rgba(255,255,255,0.10);
+  --player-text: #ffffff;
+  --player-muted: #aeb4c2;
+  --player-accent: #ff7a18;
+}
+
+.video-player,
+.player-container,
+#player,
+.video-container {
+  border-radius: 14px;
+}
+
+video {
+  background: #000 !important;
+  border-radius: 14px !important;
+  display: block;
+}
+
+/* Existing quality/audio panels */
+#qualityControls,
+#audioControls {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.055),
+      rgba(255,255,255,0.018)
+    ) !important;
+
+  border: 1px solid var(--player-border) !important;
+  box-shadow:
+    0 10px 35px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.035);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Select boxes */
+#videoQuality,
+#audioLanguage {
+  min-width: 125px;
+  border: 1px solid rgba(255,255,255,0.13) !important;
+  background: rgba(255,255,255,0.065) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    transform .18s ease;
+}
+
+#videoQuality:hover,
+#audioLanguage:hover {
+  background: rgba(255,255,255,0.10) !important;
+  border-color: rgba(255,122,24,0.55) !important;
+}
+
+#videoQuality:focus,
+#audioLanguage:focus {
+  border-color: var(--player-accent) !important;
+  box-shadow:
+    0 0 0 3px rgba(255,122,24,0.13);
+}
+
+/* Status text */
+#qualityStatus,
+#audioStatus {
+  color: var(--player-muted) !important;
+}
+
+/* Player surrounding area */
+video {
+  box-shadow:
+    0 18px 55px rgba(0,0,0,0.42),
+    0 0 0 1px rgba(255,255,255,0.055);
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+  video {
+    border-radius: 9px !important;
+  }
+
+  #qualityControls,
+  #audioControls {
+    padding: 11px 12px !important;
+    gap: 9px !important;
+    border-radius: 11px !important;
+  }
+
+  #videoQuality,
+  #audioLanguage {
+    min-width: 110px;
+    padding: 9px 10px !important;
+  }
+}
+
+/* Fullscreen video */
+video:fullscreen {
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+video:-webkit-full-screen {
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+</style>
+
+
+<style id="anime-custom-player-css">
+/* ANIME_CUSTOM_PLAYER_V1 */
+
+.anime-custom-player {
+  width: 100%;
+  position: relative;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 22px 65px rgba(0,0,0,.48),
+    0 0 0 1px rgba(255,255,255,.07);
+  isolation: isolate;
+}
+
+.anime-player-video-area {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+.anime-video-element {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  object-fit: contain;
+  background: #000 !important;
+  border-radius: 0 !important;
+}
+
+/* top gradient */
+.anime-player-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 18px 55px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,.72),
+    rgba(0,0,0,0)
+  );
+  transition: opacity .25s ease;
+}
+
+.anime-player-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 70%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 8px rgba(0,0,0,.8);
+}
+
+.anime-live-badge {
+  color: #fff;
+}
+
+/* HD badge */
+.anime-player-live-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .7px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  backdrop-filter: blur(8px);
+}
+
+/* center play */
+.anime-center-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 7;
+  width: 68px;
+  height: 68px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.94);
+  color: #111;
+  font-size: 27px;
+  padding-left: 5px;
+  cursor: pointer;
+  box-shadow: 0 12px 35px rgba(0,0,0,.4);
+  transition:
+    transform .18s ease,
+    background .18s ease,
+    opacity .2s ease;
+}
+
+.anime-center-play:hover {
+  transform: translate(-50%,-50%) scale(1.07);
+  background: #fff;
+}
+
+.anime-center-play.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* loading */
+.anime-player-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  place-items: center;
+  background: rgba(0,0,0,.20);
+  pointer-events: none;
+}
+
+.anime-player-loading.active {
+  display: grid;
+}
+
+.anime-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(255,255,255,.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: animeSpin .75s linear infinite;
+}
+
+@keyframes animeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* bottom controls */
+.anime-player-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  padding: 55px 15px 13px;
+  color: #fff;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.88),
+    rgba(0,0,0,.54),
+    rgba(0,0,0,0)
+  );
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
+}
+
+.anime-custom-player.controls-hidden .anime-player-controls,
+.anime-custom-player.controls-hidden .anime-player-top {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.anime-custom-player.controls-hidden {
+  cursor: none;
+}
+
+/* progress */
+.anime-progress-row {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.anime-progress {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: rgba(255,255,255,.30);
+}
+
+.anime-progress::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0,0,0,.45);
+}
+
+.anime-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* controls row */
+.anime-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.anime-left-controls,
+.anime-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.anime-control-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background .16s ease,
+    transform .16s ease;
+}
+
+.anime-control-btn:hover {
+  background: rgba(255,255,255,.13);
+}
+
+.anime-control-btn:active {
+  transform: scale(.92);
+}
+
+.anime-seek-btn {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.anime-text-btn {
+  width: auto;
+  padding: 0 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anime-volume {
+  width: 72px;
+  height: 4px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+
+.anime-time {
+  color: rgba(255,255,255,.88);
+  font-size: 12px;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+/* fullscreen */
+.anime-custom-player:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.anime-custom-player:fullscreen .anime-player-video-area {
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+.anime-custom-player:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.anime-custom-player:-webkit-full-screen .anime-player-video-area {
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+/* mobile */
+@media (max-width: 700px) {
+  .anime-custom-player {
+    border-radius: 11px;
+  }
+
+  .anime-player-video-area {
+    min-height: 205px;
+  }
+
+  .anime-center-play {
+    width: 62px;
+    height: 62px;
+    font-size: 24px;
+  }
+
+  .anime-player-controls {
+    padding: 48px 8px 8px;
+  }
+
+  .anime-control-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .anime-seek-btn {
+    font-size: 11px;
+  }
+
+  .anime-text-btn {
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  .anime-volume {
+    display: none;
+  }
+
+  .anime-time {
+    font-size: 11px;
+  }
+
+  .anime-left-controls,
+  .anime-right-controls {
+    gap: 2px;
+  }
+
+  .anime-player-title {
+    font-size: 12px;
+  }
+
+  .anime-player-live-badge {
+    font-size: 9px;
+    padding: 4px 6px;
+  }
+}
+</style>
+
+
+<style id="anime-custom-player-touch-fix">
+/* ANIME_CUSTOM_PLAYER_TOUCH_FIX */
+
+.anime-custom-player {
+  touch-action: manipulation;
+}
+
+.anime-player-controls {
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+.anime-player-controls button,
+.anime-player-controls input {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+.anime-center-play {
+  z-index: 30 !important;
+  pointer-events: auto !important;
+}
+
+.anime-player-top {
+  z-index: 25 !important;
+}
+
+@media (max-width: 700px) {
+  .anime-player-controls {
+    padding: 62px 8px 10px !important;
+    min-height: 74px;
+  }
+
+  .anime-controls-row {
+    min-height: 38px;
+  }
+
+  .anime-control-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .anime-progress {
+    height: 6px !important;
+  }
+
+  .anime-progress::-webkit-slider-thumb {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  .anime-time {
+    font-size: 11px !important;
+  }
+
+  .anime-right-controls {
+    gap: 3px !important;
+  }
+}
+</style>
+
+
+
+
+
+<style id="anime-clean-player-controls">
+.anime-center-play {
+  z-index: 50 !important;
+  pointer-events: auto !important;
+}
+
+.anime-custom-player.controls-hidden .anime-player-controls,
+.anime-custom-player.controls-hidden .anime-player-top {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.anime-custom-player.controls-hidden .anime-center-play.hidden {
+  pointer-events: none !important;
+}
+</style>
+
+</head>
+
+<body>
+
+<header>
+  <div class="container">
+    <h1>Anime Player</h1>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="info">
+    <a class="back" href="javascript:history.back()">← Back</a>
+
+    <h2 id="episodeTitle">Loading episode...</h2>
+    <p id="episodeInfo"></p>
+    <p id="status"></p>
+  </div>
+
+  <div class="player">
+    
+<!-- ANIME_CUSTOM_PLAYER_V1 -->
+<div class="anime-custom-player" id="animeCustomPlayer">
+
+  <div class="anime-player-video-area">
+
+    <video class="anime-video-element" id="videoPlayer" playsinline></video>
+
+    <button
+      type="button"
+      class="anime-center-play"
+      id="animeCenterPlay"
+      aria-label="Play"
+    >▶</button>
+
+    <div
+      class="anime-player-loading"
+      id="animePlayerLoading"
+    >
+      <div class="anime-spinner"></div>
+    </div>
+
+    <div
+      class="anime-player-top"
+      id="animePlayerTop"
+    >
+      <div class="anime-player-title" id="animePlayerTitle">
+        Episode
+      </div>
+
+      <div class="anime-player-live-badge">
+        HD
+      </div>
+    </div>
+
+    <div
+      class="anime-player-controls"
+      id="animePlayerControls"
+    >
+
+      <div class="anime-progress-row">
+        <input
+          id="animeProgress"
+          class="anime-progress"
+          type="range"
+          min="0"
+          max="100"
+          value="0"
+          step="0.1"
+        >
+      </div>
+
+      <div class="anime-controls-row">
+
+        <div class="anime-left-controls">
+
+          <button
+            type="button"
+            class="anime-control-btn"
+            id="animePlayBtn"
+            aria-label="Play or pause"
+          >▶</button>
+
+          <button
+            type="button"
+            class="anime-control-btn anime-seek-btn"
+            id="animeBackBtn"
+            aria-label="Back 10 seconds"
+          >↶10</button>
+
+          <button
+            type="button"
+            class="anime-control-btn anime-seek-btn"
+            id="animeForwardBtn"
+            aria-label="Forward 10 seconds"
+          >10↷</button>
+
+          <button
+            type="button"
+            class="anime-control-btn"
+            id="animeMuteBtn"
+            aria-label="Mute"
+          >🔊</button>
+
+          <input
+            id="animeVolume"
+            class="anime-volume"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+            aria-label="Volume"
+          >
+
+          <span
+            class="anime-time"
+            id="animeTime"
+          >0:00 / 0:00</span>
+
+        </div>
+
+        <div class="anime-right-controls">
+
+          <button
+            type="button"
+            class="anime-control-btn anime-text-btn"
+            id="animeSpeedBtn"
+          >1x</button>
+
+          <button
+            type="button"
+            class="anime-control-btn anime-text-btn"
+            id="animeQualityBtn"
+          >Quality</button>
+
+          <button
+            type="button"
+            class="anime-control-btn anime-text-btn"
+            id="animeAudioBtn"
+          >Audio</button>
+
+          <button
+            type="button"
+            class="anime-control-btn"
+            id="animePipBtn"
+            aria-label="Picture in Picture"
+          >▣</button>
+
+          <button
+            type="button"
+            class="anime-control-btn"
+            id="animeFullscreenBtn"
+            aria-label="Fullscreen"
+          >⛶</button>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+  </div>
+
+  <div id="audioControls" style="
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #171a24;
+    border: 1px solid #292d3a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  ">
+    <label for="audioLanguage" style="
+      font-size: 14px;
+      font-weight: 600;
+      color: #d7dbe5;
+    ">Audio Language</label>
+
+    <select id="audioLanguage" style="
+      padding: 10px 12px;
+      border: 1px solid #3a4050;
+      border-radius: 9px;
+      background: #242936;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    ">
+      <option value="">Loading languages...</option>
+    </select>
+
+    <span id="audioStatus" style="
+      font-size: 13px;
+      color: #9da5b5;
+    ">Detecting available audio...</span>
+  </div>
+
+  <div id="qualityControls" style="
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #171a24;
+    border: 1px solid #292d3a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  ">
+    <label for="videoQuality" style="
+      font-size: 14px;
+      font-weight: 600;
+      color: #d7dbe5;
+    ">Video Quality</label>
+
+    <select id="videoQuality" style="
+      padding: 10px 12px;
+      border: 1px solid #3a4050;
+      border-radius: 9px;
+      background: #242936;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    ">
+      <option value="-1">Auto</option>
+    </select>
+
+    <span id="qualityStatus" style="
+      font-size: 13px;
+      color: #9da5b5;
+    ">Detecting quality...</span>
+  </div>
+
+  <div id="episodeNavigation" style="
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #171a24;
+    border: 1px solid #292d3a;
+  ">
+    <div style="
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    ">
+      <button id="prevEpisode" type="button" style="
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 10px;
+        background: #292d3a;
+        color: white;
+        font-size: 15px;
+        cursor: pointer;
+      ">← Previous</button>
+
+      <button id="episodeListToggle" type="button" style="
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 10px;
+        background: #292d3a;
+        color: white;
+        font-size: 15px;
+        cursor: pointer;
+      ">☰ Episode List</button>
+
+      <button id="nextEpisode" type="button" style="
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 10px;
+        background: #292d3a;
+        color: white;
+        font-size: 15px;
+        cursor: pointer;
+      ">Next →</button>
+    </div>
+
+    <div id="episodeList" style="
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+      gap: 8px;
+      flex-wrap: wrap;
+    "></div>
+  </div>
+
+</main>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+
+  const animeId = params.get("id");
+  const season = params.get("season");
+  const episode = params.get("episode");
+
+  const episodeTitle = document.getElementById("episodeTitle");
+  const episodeInfo = document.getElementById("episodeInfo");
+  const status = document.getElementById("status");
+  const video = document.getElementById("videoPlayer");
+
+  const audioLanguage =
+    document.getElementById("audioLanguage");
+
+  const audioStatus =
+    document.getElementById("audioStatus");
+
+  const prevEpisodeButton =
+    document.getElementById("prevEpisode");
+
+  const nextEpisodeButton =
+    document.getElementById("nextEpisode");
+
+  const episodeListToggle =
+    document.getElementById("episodeListToggle");
+
+  const episodeList =
+    document.getElementById("episodeList");
+
+  let episodeItems = [];
+
+  episodeInfo.textContent =
+    `Anime: ${animeId || "Unknown"} | Season ${season || "?"} | Episode ${episode || "?"}`;
+
+  function goToEpisode(ep) {
+    if (!ep) return;
+
+    const url =
+      "episode.html?id=" +
+      encodeURIComponent(animeId) +
+      "&season=" +
+      encodeURIComponent(season) +
+      "&episode=" +
+      encodeURIComponent(ep);
+
+    window.location.href = url;
+  }
+
+  function renderEpisodeNavigation() {
+    if (!episodeItems.length) {
+      prevEpisodeButton.disabled = true;
+      nextEpisodeButton.disabled = true;
+      return;
+    }
+
+    const currentIndex = episodeItems.findIndex(
+      item =>
+        String(item.episode_number) === String(episode)
+    );
+
+    const previous =
+      currentIndex > 0
+        ? episodeItems[currentIndex - 1]
+        : null;
+
+    const next =
+      currentIndex >= 0 &&
+      currentIndex < episodeItems.length - 1
+        ? episodeItems[currentIndex + 1]
+        : null;
+
+    prevEpisodeButton.disabled = !previous;
+    nextEpisodeButton.disabled = !next;
+
+    prevEpisodeButton.style.opacity =
+      previous ? "1" : "0.45";
+
+    nextEpisodeButton.style.opacity =
+      next ? "1" : "0.45";
+
+    prevEpisodeButton.onclick = () => {
+      if (previous) {
+        goToEpisode(previous.episode_number);
+      }
+    };
+
+    nextEpisodeButton.onclick = () => {
+      if (next) {
+        goToEpisode(next.episode_number);
+      }
+    };
+
+    episodeList.innerHTML = "";
+
+    episodeItems.forEach(item => {
+      const button = document.createElement("button");
+
+      const epNumber = item.episode_number;
+      const title = item.title || "";
+
+      button.type = "button";
+      button.textContent =
+        "Episode " + epNumber +
+        (title ? " • " + title : "");
+
+      button.style.cssText = `
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 11px 13px;
+        border: 0;
+        border-radius: 9px;
+        text-align: left;
+        background: ${String(epNumber) === String(episode)
+          ? "#3b82f6"
+          : "#242936"};
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+      `;
+
+      button.onclick = () => {
+        goToEpisode(epNumber);
+      };
+
+      episodeList.appendChild(button);
+    });
+  }
+
+  episodeListToggle.addEventListener("click", () => {
+    const isHidden =
+      episodeList.style.display === "none";
+
+    episodeList.style.display =
+      isHidden ? "block" : "none";
+
+    episodeListToggle.textContent =
+      isHidden
+        ? "✕ Close Episode List"
+        : "☰ Episode List";
+  });
+
+  async function loadEpisode() {
+    if (!animeId || !season || !episode) {
+      episodeTitle.textContent = "Episode information missing.";
+      status.textContent = "Required URL parameters are missing.";
+      return;
+    }
+
+    try {
+      status.textContent = "Loading episode...";
+
+      const episodeResponse = await fetch(
+        `/api/anime/${encodeURIComponent(animeId)}/episodes?season=${encodeURIComponent(season)}&page=1&limit=30`
+      );
+
+      const result = await episodeResponse.json();
+
+      if (!result.status || !result.data) {
+        throw new Error("Episode API returned no data.");
+      }
+
+      const found = result.data.find(
+        item => String(item.episode_number) === String(episode)
+      );
+
+      if (found) {
+        episodeTitle.textContent =
+          found.title || `Episode ${episode}`;
+
+        episodeInfo.textContent =
+          `Season ${season} • Episode ${episode}`;
+      }
+
+      console.log("Episode data:", found);
+
+      episodeItems = result.data
+        .slice()
+        .sort((a, b) =>
+          Number(a.episode_number) - Number(b.episode_number)
+        );
+
+      renderEpisodeNavigation();
+
+      status.textContent = "Resolving video stream...";
+
+      const streamResponse = await fetch(
+        `/api/anime/${encodeURIComponent(animeId)}/episode/${encodeURIComponent(season)}/${encodeURIComponent(episode)}/stream`
+      );
+
+      const streamData = await streamResponse.json();
+
+      console.log("Stream API response:", streamData);
+
+      if (!streamResponse.ok || !streamData.status || !streamData.video_url) {
+        throw new Error(
+          streamData.message || "Video stream URL not found."
+        );
+      }
+
+      if (streamData.poster) {
+        video.poster = streamData.poster;
+      }
+
+      const videoUrl =
+        "/api/hls-proxy?url=" +
+        encodeURIComponent(streamData.video_url);
+
+      if (window.Hls && Hls.isSupported()) {
+        console.log("Using HLS.js");
+
+        const hls = new Hls({
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
+          backBufferLength: 30,
+
+          manifestLoadingMaxRetry: 5,
+          manifestLoadingRetryDelay: 1000,
+          manifestLoadingMaxRetryTimeout: 10000,
+
+          fragLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 1000,
+          fragLoadingMaxRetryTimeout: 10000,
+
+          levelLoadingMaxRetry: 5,
+          levelLoadingRetryDelay: 1000,
+          levelLoadingMaxRetryTimeout: 10000
+        });
+
+        window.currentHls = hls;
+
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+
+        video.addEventListener("playing", function() {
+          status.textContent = "Video playing.";
+        });
+
+        video.addEventListener("waiting", function() {
+          status.textContent = "Buffering...";
+        });
+
+        function setupQualityLevels() {
+          const levels = hls.levels || [];
+
+          console.log(
+            "HLS QUALITY LEVELS:",
+            levels.map((level, index) => ({
+              index,
+              width: level.width,
+              height: level.height,
+              bitrate: level.bitrate
+            }))
+          );
+
+          videoQuality.innerHTML = "";
+
+          const autoOption = document.createElement("option");
+          autoOption.value = "-1";
+          autoOption.textContent = "Auto";
+          videoQuality.appendChild(autoOption);
+
+          if (!levels.length) {
+            videoQuality.disabled = true;
+            qualityStatus.textContent =
+              "No quality levels found.";
+            return;
+          }
+
+          const sorted = levels
+            .map((level, index) => ({
+              index,
+              width: Number(level.width) || 0,
+              height: Number(level.height) || 0,
+              bitrate: Number(level.bitrate) || 0
+            }))
+            .filter(level => level.height > 0)
+            .sort((a, b) => {
+              if (a.height !== b.height) {
+                return a.height - b.height;
+              }
+
+              return a.bitrate - b.bitrate;
+            });
+
+          const usedHeights = new Set();
+
+          sorted.forEach(level => {
+            if (usedHeights.has(level.height)) {
+              return;
+            }
+
+            usedHeights.add(level.height);
+
+            const option =
+              document.createElement("option");
+
+            option.value = String(level.index);
+            option.textContent =
+              level.height + "p";
+
+            videoQuality.appendChild(option);
+          });
+
+          videoQuality.disabled = false;
+
+          if (
+            hls.currentLevel === -1 ||
+            hls.currentLevel === undefined
+          ) {
+            videoQuality.value = "-1";
+            qualityStatus.textContent =
+              "Current: Auto";
+          } else {
+            const current =
+              levels[hls.currentLevel];
+
+            if (current && current.height) {
+              videoQuality.value =
+                String(hls.currentLevel);
+
+              qualityStatus.textContent =
+                "Current: " +
+                current.height +
+                "p";
+            } else {
+              videoQuality.value = "-1";
+              qualityStatus.textContent =
+                "Current: Auto";
+            }
+          }
+        }
+
+        function setupAudioTracks() {
+          const tracks = hls.audioTracks || [];
+
+          console.log(
+            "HLS AUDIO TRACKS:",
+            tracks.map((track, index) => ({
+              index,
+              name: track.name,
+              lang: track.lang,
+              language: track.language,
+              groupId: track.groupId
+            }))
+          );
+
+          audioLanguage.innerHTML = "";
+
+          if (!tracks.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No alternate audio";
+            audioLanguage.appendChild(option);
+            audioLanguage.disabled = true;
+            audioStatus.textContent =
+              "No alternate audio tracks found.";
+            return;
+          }
+
+          tracks.forEach((track, index) => {
+            const option = document.createElement("option");
+
+            option.value = String(index);
+
+            const lang = String(
+              track.lang ||
+              track.language ||
+              ""
+            ).toLowerCase();
+
+            const name = String(
+              track.name || ""
+            );
+
+            let label = name || lang;
+
+            const labels = {
+              hin: "Hindi",
+              eng: "English",
+              jpn: "Japanese",
+              tam: "Tamil",
+              mal: "Malayalam",
+              tel: "Telugu",
+              ben: "Bengali",
+              kan: "Kannada",
+              kor: "Korean",
+              mar: "Marathi"
+            };
+
+            if (labels[lang]) {
+              label = labels[lang];
+            }
+
+            if (!label) {
+              label = "Audio " + (index + 1);
+            }
+
+            option.textContent = label;
+
+            audioLanguage.appendChild(option);
+          });
+
+          audioLanguage.disabled = false;
+
+          let defaultIndex = tracks.findIndex(track => {
+            const lang = String(
+              track.lang ||
+              track.language ||
+              ""
+            ).toLowerCase();
+
+            const name = String(
+              track.name || ""
+            ).toLowerCase();
+
+            return (
+              lang === "hin" ||
+              lang.startsWith("hin-") ||
+              name.includes("hindi")
+            );
+          });
+
+          if (defaultIndex < 0) {
+            defaultIndex = tracks.findIndex(track => {
+              const lang = String(
+                track.lang ||
+                track.language ||
+                ""
+              ).toLowerCase();
+
+              const name = String(
+                track.name || ""
+              ).toLowerCase();
+
+              return (
+                lang === "eng" ||
+                lang.startsWith("eng-") ||
+                name.includes("english")
+              );
+            });
+          }
+
+          if (defaultIndex < 0) {
+            defaultIndex = 0;
+          }
+
+          console.log(
+            "Selecting default audio:",
+            defaultIndex,
+            tracks[defaultIndex]
+          );
+
+          hls.audioTrack = defaultIndex;
+
+          audioLanguage.value =
+            String(defaultIndex);
+
+          const selectedTrack =
+            tracks[defaultIndex];
+
+          audioStatus.textContent =
+            "Current: " +
+            (
+              selectedTrack.name ||
+              selectedTrack.lang ||
+              selectedTrack.language ||
+              "Audio"
+            );
+
+          setTimeout(() => {
+            if (hls.audioTrack !== defaultIndex) {
+              hls.audioTrack = defaultIndex;
+            }
+
+            audioLanguage.value =
+              String(defaultIndex);
+          }, 700);
+        }
+
+        hls.on(
+          Hls.Events.AUDIO_TRACKS_UPDATED,
+          function() {
+            console.log(
+              "AUDIO_TRACKS_UPDATED fired"
+            );
+
+            setupAudioTracks();
+          }
+        );
+
+        hls.on(
+          Hls.Events.MANIFEST_PARSED,
+          function() {
+            console.log(
+              "HLS manifest loaded successfully."
+            );
+            setupQualityLevels();
+
+
+            if (
+              hls.audioTracks &&
+              hls.audioTracks.length
+            ) {
+              setupAudioTracks();
+            }
+
+            status.textContent =
+              "Video ready.";
+
+            video.play().catch(() => {
+              status.textContent =
+                "Video ready. Press Play.";
+            });
+          }
+        );
+
+        audioLanguage.addEventListener(
+          "change",
+          function() {
+            const hls =
+              window.currentHls;
+
+            if (
+              !hls ||
+              !hls.audioTracks
+            ) {
+              return;
+            }
+
+            const selectedIndex =
+              Number(this.value);
+
+            if (
+              !Number.isInteger(selectedIndex) ||
+              selectedIndex < 0 ||
+              !hls.audioTracks[selectedIndex]
+            ) {
+              return;
+            }
+
+            const currentTime =
+              video.currentTime;
+
+            const wasPlaying =
+              !video.paused;
+
+            const selectedTrack =
+              hls.audioTracks[selectedIndex];
+
+            audioStatus.textContent =
+              "Switching to " +
+              (
+                selectedTrack.name ||
+                selectedTrack.lang ||
+                selectedTrack.language ||
+                "Audio"
+              ) +
+              "...";
+
+            console.log(
+              "Switching audio:",
+              selectedIndex,
+              selectedTrack
+            );
+
+            hls.audioTrack =
+              selectedIndex;
+
+            setTimeout(() => {
+              try {
+                if (
+                  Number.isFinite(currentTime) &&
+                  Math.abs(
+                    video.currentTime -
+                    currentTime
+                  ) > 1
+                ) {
+                  video.currentTime =
+                    currentTime;
+                }
+
+                if (wasPlaying) {
+                  video.play().catch((error) => {
+  console.error("CUSTOM PLAY ERROR:", error);
+  status.textContent = "Play error: " + (error?.message || error?.name || "Unknown");
+});
+                }
+              } catch (error) {
+                console.warn(
+                  "Audio position restore failed:",
+                  error
+                );
+              }
+            }, 300);
+          }
+        );
+
+        videoQuality.addEventListener(
+          "change",
+          function() {
+            const selectedLevel =
+              Number(this.value);
+
+            if (
+              !Number.isInteger(selectedLevel) ||
+              selectedLevel < -1 ||
+              selectedLevel >= hls.levels.length
+            ) {
+              return;
+            }
+
+            const currentTime =
+              video.currentTime;
+
+            const wasPlaying =
+              !video.paused;
+
+            const currentAudioTrack =
+              hls.audioTrack;
+
+            if (selectedLevel === -1) {
+              qualityStatus.textContent =
+                "Switching to Auto...";
+            } else {
+              const level =
+                hls.levels[selectedLevel];
+
+              qualityStatus.textContent =
+                "Switching to " +
+                (
+                  level && level.height
+                    ? level.height + "p"
+                    : "selected quality"
+                ) +
+                "...";
+            }
+
+            console.log(
+              "Switching video quality:",
+              selectedLevel
+            );
+
+            hls.currentLevel =
+              selectedLevel;
+
+            setTimeout(() => {
+              try {
+                if (
+                  Number.isFinite(currentTime) &&
+                  Math.abs(
+                    video.currentTime -
+                    currentTime
+                  ) > 1
+                ) {
+                  video.currentTime =
+                    currentTime;
+                }
+
+                if (
+                  Number.isInteger(
+                    currentAudioTrack
+                  ) &&
+                  currentAudioTrack >= 0
+                ) {
+                  hls.audioTrack =
+                    currentAudioTrack;
+                }
+
+                if (wasPlaying) {
+                  video.play().catch((error) => {
+  console.error("CUSTOM PLAY ERROR:", error);
+  status.textContent = "Play error: " + (error?.message || error?.name || "Unknown");
+});
+                }
+              } catch (error) {
+                console.warn(
+                  "Quality position restore failed:",
+                  error
+                );
+              }
+            }, 300);
+          }
+        );
+
+        hls.on(
+          Hls.Events.LEVEL_SWITCHED,
+          function(event, data) {
+            const index = data.level;
+
+            if (index === -1) {
+              videoQuality.value = "-1";
+              qualityStatus.textContent =
+                "Current: Auto";
+              return;
+            }
+
+            const level =
+              hls.levels[index];
+
+            if (!level) {
+              return;
+            }
+
+            videoQuality.value =
+              String(index);
+
+            qualityStatus.textContent =
+              "Current: " +
+              (
+                level.height
+                  ? level.height + "p"
+                  : "Quality"
+              );
+
+            console.log(
+              "Video quality switched:",
+              index,
+              level
+            );
+          }
+        );
+
+        hls.on(
+          Hls.Events.AUDIO_TRACK_SWITCHED,
+          function(event, data) {
+            const index = data.id;
+
+            if (!hls.audioTracks[index]) {
+              return;
+            }
+
+            const track =
+              hls.audioTracks[index];
+
+            audioLanguage.value =
+              String(index);
+
+            audioStatus.textContent =
+              "Current: " +
+              (
+                track.name ||
+                track.lang ||
+                track.language ||
+                "Audio"
+              );
+
+            console.log(
+              "Audio track switched:",
+              index,
+              track
+            );
+          }
+        );
+
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          console.warn("HLS error:", data);
+
+          if (!data.fatal) {
+            return;
+          }
+
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            console.warn("Recovering from HLS network error...");
+
+            status.textContent = "Reconnecting...";
+
+            setTimeout(() => {
+              try {
+                hls.startLoad();
+              } catch (e) {
+                console.error("HLS network recovery failed:", e);
+              }
+            }, 1000);
+
+            return;
+          }
+
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            console.warn("Recovering from HLS media error...");
+
+            try {
+              hls.recoverMediaError();
+              status.textContent = "Video ready.";
+            } catch (e) {
+              console.error("HLS media recovery failed:", e);
+            }
+
+            return;
+          }
+
+          console.error("Unrecoverable HLS error:", data);
+
+          status.textContent =
+            "Video playback error: " + data.type;
+        });
+
+      } else if (
+        video.canPlayType("application/vnd.apple.mpegurl")
+      ) {
+        console.log("Using native HLS");
+
+        video.src = videoUrl;
+
+        video.addEventListener("loadedmetadata", function() {
+          status.textContent = "Video ready.";
+
+          video.play().catch(() => {
+            status.textContent = "Video ready. Press Play.";
+          });
+        }, { once: true });
+
+      } else {
+        throw new Error(
+          "This browser does not support HLS playback."
+        );
+      }
+
+    } catch (error) {
+      console.error("Video loading failed:", error);
+
+      status.textContent =
+        "Video load failed: " + error.message;
+    }
+  }
+
+  loadEpisode();
+</script>
+
+
+<script id="anime-custom-player-js">
+/* ANIME_CUSTOM_PLAYER_V1 */
+
+(function() {
+  function initAnimeCustomPlayer() {
+    const player = document.getElementById("animeCustomPlayer");
+    const video = player
+      ? player.querySelector("video")
+      : null;
+
+    if (!player || !video) {
+      console.warn("Custom player: video element not found.");
+      return;
+    }
+
+    const playBtn =
+      document.getElementById("animePlayBtn");
+
+    const centerPlay =
+      document.getElementById("animeCenterPlay");
+
+    const backBtn =
+      document.getElementById("animeBackBtn");
+
+    const forwardBtn =
+      document.getElementById("animeForwardBtn");
+
+    const muteBtn =
+      document.getElementById("animeMuteBtn");
+
+    const volume =
+      document.getElementById("animeVolume");
+
+    const progress =
+      document.getElementById("animeProgress");
+
+    const time =
+      document.getElementById("animeTime");
+
+    const fullscreenBtn =
+      document.getElementById("animeFullscreenBtn");
+
+    const pipBtn =
+      document.getElementById("animePipBtn");
+
+    const speedBtn =
+      document.getElementById("animeSpeedBtn");
+
+    const qualityBtn =
+      document.getElementById("animeQualityBtn");
+
+    const audioBtn =
+      document.getElementById("animeAudioBtn");
+
+    const loading =
+      document.getElementById("animePlayerLoading");
+
+    let hideTimer = null;
+    let speedIndex = 0;
+
+    const speeds = [
+      1,
+      1.25,
+      1.5,
+      1.75,
+      2,
+      0.75,
+      0.5
+    ];
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) {
+        return "0:00";
+      }
+
+      seconds = Math.max(0, Math.floor(seconds));
+
+      const hours =
+        Math.floor(seconds / 3600);
+
+      const minutes =
+        Math.floor((seconds % 3600) / 60);
+
+      const secs =
+        seconds % 60;
+
+      if (hours > 0) {
+        return (
+          hours +
+          ":" +
+          String(minutes).padStart(2, "0") +
+          ":" +
+          String(secs).padStart(2, "0")
+        );
+      }
+
+      return (
+        minutes +
+        ":" +
+        String(secs).padStart(2, "0")
+      );
+    }
+
+    function updateTime() {
+      const current =
+        Number.isFinite(video.currentTime)
+          ? video.currentTime
+          : 0;
+
+      const duration =
+        Number.isFinite(video.duration)
+          ? video.duration
+          : 0;
+
+      time.textContent =
+        formatTime(current) +
+        " / " +
+        formatTime(duration);
+
+      if (duration > 0) {
+        progress.value =
+          String((current / duration) * 100);
+      } else {
+        progress.value = "0";
+      }
+    }
+
+    function updatePlayButton() {
+      if (video.paused) {
+        playBtn.textContent = "▶";
+        centerPlay.classList.remove("hidden");
+      } else {
+        playBtn.textContent = "❚❚";
+        centerPlay.classList.add("hidden");
+      }
+    }
+
+    function togglePlay() {
+      if (video.paused) {
+        video.play().catch((error) => {
+  console.error("CUSTOM PLAY ERROR:", error);
+  status.textContent = "Play error: " + (error?.message || error?.name || "Unknown");
+});
+      } else {
+        video.pause();
+      }
+    }
+
+    function seekBy(seconds) {
+      if (!Number.isFinite(video.duration)) {
+        return;
+      }
+
+      video.currentTime =
+        Math.max(
+          0,
+          Math.min(
+            video.duration,
+            video.currentTime + seconds
+          )
+        );
+
+      showControls();
+    }
+
+    function updateMuteButton() {
+      if (
+        video.muted ||
+        video.volume === 0
+      ) {
+        muteBtn.textContent = "🔇";
+      } else if (video.volume < 0.5) {
+        muteBtn.textContent = "🔉";
+      } else {
+        muteBtn.textContent = "🔊";
+      }
+    }
+
+    function showControls() {
+      player.classList.remove("controls-hidden");
+
+      clearTimeout(hideTimer);
+
+      if (!video.paused) {
+        hideTimer = setTimeout(() => {
+          player.classList.add("controls-hidden");
+        }, 3000);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+        return;
+      }
+
+      if (player.requestFullscreen) {
+        player.requestFullscreen().catch(() => {});
+      } else if (player.webkitRequestFullscreen) {
+        player.webkitRequestFullscreen();
+      }
+    }
+
+    function openQuality() {
+      const select =
+        document.getElementById("videoQuality");
+
+      if (!select) return;
+
+      select.focus();
+
+      try {
+        select.click();
+      } catch (e) {
+        console.warn("Quality menu open failed:", e);
+      }
+
+      showControls();
+    }
+
+    function openAudio() {
+      const select =
+        document.getElementById("audioLanguage");
+
+      if (!select) return;
+
+      select.focus();
+
+      try {
+        select.click();
+      } catch (e) {
+        console.warn("Audio menu open failed:", e);
+      }
+
+      showControls();
+    }
+
+    playBtn.addEventListener(
+      "click",
+      togglePlay
+    );
+
+    
+centerPlay.addEventListener("click", function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (video.paused) {
+    video.play().catch((error) => {
+      console.error("CENTER PLAY ERROR:", error);
+      status.textContent =
+        "Play error: " +
+        (error?.message || error?.name || "Unknown");
+    });
+  } else {
+    video.pause();
+  }
+
+  showControls();
+});
+
+    video.addEventListener(
+      "click",
+      function() {
+        /*
+         * Mobile behavior:
+         * 1st tap while controls hidden -> show controls only.
+         * 2nd tap while controls visible -> play/pause.
+         */
+        const controlsHidden =
+          player.classList.contains("controls-hidden");
+
+        if (controlsHidden) {
+          showControls();
+          return;
+        }
+
+        togglePlay();
+        showControls();
+      }
+    );
+
+    backBtn.addEventListener(
+      "click",
+      function() {
+        seekBy(-10);
+      }
+    );
+
+    forwardBtn.addEventListener(
+      "click",
+      function() {
+        seekBy(10);
+      }
+    );
+
+    muteBtn.addEventListener(
+      "click",
+      function() {
+        video.muted = !video.muted;
+
+        if (!video.muted && video.volume === 0) {
+          video.volume = 0.8;
+          volume.value = "0.8";
+        }
+
+        updateMuteButton();
+        showControls();
+      }
+    );
+
+    volume.addEventListener(
+      "input",
+      function() {
+        const value =
+          Number(this.value);
+
+        video.volume =
+          Number.isFinite(value)
+            ? value
+            : 1;
+
+        video.muted =
+          video.volume === 0;
+
+        updateMuteButton();
+        showControls();
+      }
+    );
+
+    progress.addEventListener(
+      "input",
+      function() {
+        if (!Number.isFinite(video.duration)) {
+          return;
+        }
+
+        const percent =
+          Number(this.value) / 100;
+
+        video.currentTime =
+          video.duration * percent;
+
+        showControls();
+      }
+    );
+
+    speedBtn.addEventListener(
+      "click",
+      function() {
+        speedIndex =
+          (speedIndex + 1) % speeds.length;
+
+        const speed =
+          speeds[speedIndex];
+
+        video.playbackRate = speed;
+
+        speedBtn.textContent =
+          speed + "x";
+
+        showControls();
+      }
+    );
+
+    qualityBtn.addEventListener(
+      "click",
+      openQuality
+    );
+
+    audioBtn.addEventListener(
+      "click",
+      openAudio
+    );
+
+    fullscreenBtn.addEventListener(
+      "click",
+      function() {
+        toggleFullscreen();
+        showControls();
+      }
+    );
+
+    pipBtn.addEventListener(
+      "click",
+      async function() {
+        try {
+          if (
+            document.pictureInPictureElement
+          ) {
+            await document.exitPictureInPicture();
+          } else if (
+            document.pictureInPictureEnabled &&
+            video.requestPictureInPicture
+          ) {
+            await video.requestPictureInPicture();
+          }
+        } catch (error) {
+          console.warn(
+            "Picture-in-Picture unavailable:",
+            error
+          );
+        }
+
+        showControls();
+      }
+    );
+
+    player.addEventListener(
+      "mousemove",
+      showControls
+    );
+
+    player.addEventListener(
+      "touchstart",
+      showControls,
+      { passive: true }
+    );
+
+    player.addEventListener(
+      "touchmove",
+      showControls,
+      { passive: true }
+    );
+
+    video.addEventListener(
+      "play",
+      function() {
+        updatePlayButton();
+        showControls();
+      }
+    );
+
+    video.addEventListener(
+      "pause",
+      function() {
+        updatePlayButton();
+        showControls();
+      }
+    );
+
+    video.addEventListener(
+      "timeupdate",
+      updateTime
+    );
+
+    video.addEventListener(
+      "loadedmetadata",
+      updateTime
+    );
+
+    video.addEventListener(
+      "durationchange",
+      updateTime
+    );
+
+    video.addEventListener(
+      "volumechange",
+      updateMuteButton
+    );
+
+    video.addEventListener(
+      "waiting",
+      function() {
+        loading.classList.add("active");
+      }
+    );
+
+    video.addEventListener(
+      "playing",
+      function() {
+        loading.classList.remove("active");
+        updatePlayButton();
+      }
+    );
+
+    video.addEventListener(
+      "canplay",
+      function() {
+        loading.classList.remove("active");
+      }
+    );
+
+    document.addEventListener(
+      "fullscreenchange",
+      function() {
+        showControls();
+      }
+    );
+
+    document.addEventListener(
+      "keydown",
+      function(event) {
+        if (
+          event.target &&
+          (
+            event.target.tagName === "INPUT" ||
+            event.target.tagName === "SELECT" ||
+            event.target.tagName === "TEXTAREA"
+          )
+        ) {
+          return;
+        }
+
+        if (event.code === "Space") {
+          event.preventDefault();
+          togglePlay();
+          showControls();
+        }
+
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          seekBy(-10);
+        }
+
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          seekBy(10);
+        }
+
+        if (event.key.toLowerCase() === "m") {
+          video.muted = !video.muted;
+          updateMuteButton();
+        }
+
+        if (event.key.toLowerCase() === "f") {
+          toggleFullscreen();
+        }
+      }
+    );
+
+    video.volume = 1;
+    volume.value = "1";
+
+    updateTime();
+    updatePlayButton();
+    updateMuteButton();
+
+    console.log(
+      "Anime custom player initialized successfully."
+    );
+  }
+
+  /*
+   * Existing episode JS HLS setup ke saath conflict na ho,
+   * isliye DOM ready ke baad initialize karte hain.
+   */
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      initAnimeCustomPlayer,
+      { once: true }
+    );
+  } else {
+    initAnimeCustomPlayer();
+  }
+})();
+</script>
+
+
+
+
+</body>
+</html>

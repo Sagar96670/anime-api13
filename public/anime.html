@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Anime Details</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f1117;
+      color: #fff;
+    }
+
+    header {
+      background: #171a23;
+      border-bottom: 1px solid #292d38;
+      padding: 18px;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: auto;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 15px;
+      cursor: pointer;
+      background: #292d38;
+      color: white;
+    }
+
+    .anime-info {
+      display: flex;
+      gap: 25px;
+      margin-top: 30px;
+    }
+
+    .poster {
+      width: 220px;
+      height: 320px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .description {
+      color: #aeb4c2;
+      line-height: 1.6;
+    }
+
+    .season-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 25px 0;
+    }
+
+    .season-buttons button.active {
+      background: #fff;
+      color: #111;
+    }
+
+    .episodes {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .episode {
+      background: #171a23;
+      border: 1px solid #292d38;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .episode-number {
+      font-weight: bold;
+    }
+
+    .episode-title {
+      margin-top: 6px;
+      color: #aeb4c2;
+      font-size: 13px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 25px 0;
+    }
+
+    @media (max-width: 600px) {
+      .anime-info {
+        flex-direction: column;
+      }
+
+      .poster {
+        width: 180px;
+        height: 260px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="container">
+    <button onclick="history.back()">← Back</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <section id="animeInfo">
+    Loading...
+  </section>
+
+  <section>
+    <h2>Seasons</h2>
+    <div id="seasons" class="season-buttons"></div>
+  </section>
+
+  <section>
+    <h2 id="episodeHeading">Episodes</h2>
+
+    <div id="episodes" class="episodes">
+      Loading episodes...
+    </div>
+
+    <div class="pagination">
+      <button id="previous" onclick="previousPage()">Previous</button>
+      <span id="pageInfo"></span>
+      <button id="next" onclick="nextPage()">Next</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const animeId = params.get("id");
+
+  let currentSeason = 1;
+  let currentPage = 1;
+  const limit = 30;
+  let totalPages = 1;
+
+  async function loadAnime() {
+    if (!animeId) {
+      document.getElementById("animeInfo").textContent =
+        "Anime ID missing.";
+      return;
+    }
+
+    const response = await fetch(
+      `/api/anime/${encodeURIComponent(animeId)}`
+    );
+
+    const result = await response.json();
+
+    if (!result.status) {
+      document.getElementById("animeInfo").textContent =
+        "Anime not found.";
+      return;
+    }
+
+    const anime = result.data;
+
+    document.getElementById("animeInfo").innerHTML = `
+      <div class="anime-info">
+        <img
+          class="poster"
+          src="${anime.poster || ""}"
+          alt="${escapeHtml(anime.title)}"
+        >
+
+        <div>
+          <h1>${escapeHtml(anime.title)}</h1>
+
+          <p class="description">
+            ${escapeHtml(anime.description || "No description available.")}
+          </p>
+        </div>
+      </div>
+    `;
+
+    await loadSeasons();
+  }
+
+  async function loadSeasons() {
+    const response = await fetch(
+      `/api/anime/${encodeURIComponent(animeId)}/seasons`
+    );
+
+    const result = await response.json();
+
+    const container = document.getElementById("seasons");
+
+    container.innerHTML = result.data.map(season => `
+      <button
+        class="${season.season === currentSeason ? "active" : ""}"
+        onclick="selectSeason(${season.season})"
+      >
+        Season ${season.season}
+        (${season.episode_count})
+      </button>
+    `).join("");
+
+    await loadEpisodes();
+  }
+
+  async function selectSeason(season) {
+    currentSeason = season;
+    currentPage = 1;
+
+    await loadSeasons();
+  }
+
+  async function loadEpisodes() {
+    const response = await fetch(
+      `/api/anime/${encodeURIComponent(animeId)}/episodes?season=${currentSeason}&page=${currentPage}&limit=${limit}`
+    );
+
+    const result = await response.json();
+
+    totalPages = result.pagination.total_pages;
+
+    document.getElementById("episodeHeading").textContent =
+      `Season ${currentSeason} Episodes`;
+
+    const container = document.getElementById("episodes");
+
+    if (!result.data.length) {
+      container.innerHTML = "No episodes found.";
+      return;
+    }
+
+    container.innerHTML = result.data.map(episode => `
+      <div
+        class="episode"
+        onclick="openEpisode('${encodeURIComponent(animeId)}', ${episode.season}, ${episode.episode_number})"
+        style="cursor:pointer"
+      >
+        <div class="episode-number">
+          Episode ${episode.episode_number}
+        </div>
+
+        <div class="episode-title">
+          ${escapeHtml(episode.title || "Episode")}
+        </div>
+      </div>
+    `).join("");
+
+    document.getElementById("pageInfo").textContent =
+      `Page ${currentPage} / ${totalPages}`;
+
+    document.getElementById("previous").disabled =
+      currentPage <= 1;
+
+    document.getElementById("next").disabled =
+      currentPage >= totalPages;
+  }
+
+  function openEpisode(id, season, episode) {
+    window.location.href =
+      '/episode.html?id=' + id + '&season=' + season + '&episode=' + episode;
+  }
+  function previousPage() {
+    if (currentPage > 1) {
+      currentPage--;
+      loadEpisodes();
+    }
+  }
+
+  function nextPage() {
+    if (currentPage < totalPages) {
+      currentPage++;
+      loadEpisodes();
+    }
+  }
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  loadAnime();
+</script>
+
+</body>
+</html>

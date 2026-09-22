@@ -1,0 +1,56 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.DS_Store
+
+# Local database
+anime-db.json
+
+# Database backups
+anime-db*.json
+
+# Temporary/test files
+headers.txt
+test-video-data.json
+video-data.json
+
+# Local inspection/test scripts
+add-test.js
+remove-test.js
+inspect-anime.js
+inspect-episode.js
+inspect-poster.js
+inspect-source.js
+scraper.js
+player-scripts.js
+episode1.html
+video-player.html
+vload-obfuscated.js
+
+# Local server backups
+server*.backup*
+server.backup*
+server.js.backup*
+server.js.before-*
+server.js.broken-*
+
+# Local sync backups
+sync-anime*.backup*
+
+# Local temporary helper
+torofilm-public.js
+
+# Frontend backup files
+public/*.backup
+public/*.backup-*
+README.md
+
+# Local file backups
+*.backup
+*.backup-*

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movies</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0b0b0b;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 18px;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .back {
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .count {
+      color: #999;
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      background: #151515;
+      border-radius: 10px;
+      overflow: hidden;
+      transition: transform 0.15s;
+    }
+
+    .card:active {
+      transform: scale(0.97);
+    }
+
+    .poster {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+      display: block;
+      background: #222;
+    }
+
+    .info {
+      padding: 10px;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: bold;
+      line-height: 1.35;
+    }
+
+    .error {
+      color: #ff7777;
+      padding: 20px 0;
+    }
+
+    .loading {
+      color: #aaa;
+      padding: 20px 0;
+    }
+
+    @media (max-width: 500px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .container {
+        padding: 14px;
+      }
+    }
+  
+.search-box {
+  width: 100%;
+  padding: 13px 15px;
+  margin: 0 0 20px;
+  background: #171a23;
+  color: #ffffff;
+  border: 1px solid #292d38;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+}
+
+.search-box:focus {
+  border-color: #4b5265;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="top">
+    <a class="back" href="/">← Back</a>
+    <h1>Movies</h1>
+  </div>
+
+  <div id="count" class="count">
+    Loading movies...
+  </div>
+
+  <input
+    id="searchBox"
+    class="search-box"
+    type="search"
+    placeholder="🔎 Search movies..."
+    autocomplete="off"
+  >
+
+  <div id="movies" class="grid"></div>
+
+</div>
+
+<script>
+let allMovies = [];
+
+async function loadMovies() {
+  const moviesBox = document.getElementById("movies");
+  const count = document.getElementById("count");
+
+  try {
+    const response = await fetch("/api/movies");
+    const result = await response.json();
+
+    if (!result.status) {
+      throw new Error(result.message || "Failed to load movies");
+    }
+
+    allMovies = Array.isArray(result.data)
+      ? result.data
+      : [];
+
+    const movies = allMovies;
+
+    count.textContent = movies.length + " movies";
+
+    if (!movies.length) {
+      moviesBox.innerHTML =
+        '<div class="error">No movies available.</div>';
+      return;
+    }
+
+    moviesBox.innerHTML = movies.map(movie => `
+      <a
+        class="card"
+        href="/movie.html?id=${encodeURIComponent(movie.id)}"
+      >
+        ${
+          movie.poster
+            ? `<img
+                class="poster"
+                src="${escapeHtml(movie.poster)}"
+                alt="${escapeHtml(movie.title || "")}"
+                loading="lazy"
+              >`
+            : `<div class="poster"></div>`
+        }
+
+        <div class="info">
+          <div class="title">
+            ${escapeHtml(movie.title || "Untitled")}
+          </div>
+        </div>
+      </a>
+    `).join("");
+
+  } catch (error) {
+    console.error(error);
+
+    count.textContent = "";
+
+    moviesBox.innerHTML =
+      '<div class="error">' +
+      escapeHtml(error.message) +
+      '</div>';
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+document.getElementById("searchBox").addEventListener("input", function() {
+  const query = this.value.trim().toLowerCase();
+
+  const filtered = allMovies.filter(movie =>
+    String(movie.title || "").toLowerCase().includes(query)
+  );
+
+  const moviesBox = document.getElementById("movies");
+  const count = document.getElementById("count");
+
+  count.textContent = query
+    ? filtered.length + " movies"
+    : allMovies.length + " movies";
+
+  if (!filtered.length) {
+    moviesBox.innerHTML =
+      '<div class="error">No movies found.</div>';
+    return;
+  }
+
+  moviesBox.innerHTML = filtered.map(movie => `
+    <a
+      class="card"
+      href="/movie.html?id=${encodeURIComponent(movie.id)}"
+    >
+      ${movie.poster
+        ? `<img
+            class="poster"
+            src="${escapeHtml(movie.poster)}"
+            alt="${escapeHtml(movie.title || "")}"
+            loading="lazy"
+          >`
+        : `<div class="poster"></div>`
+      }
+
+      <div class="info">
+        <div class="title">
+          ${escapeHtml(movie.title || "Untitled")}
+        </div>
+      </div>
+    </a>
+  `).join("");
+});
+
+loadMovies();
+</script>
+
+</body>
+</html>
