@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "server.js": {
+      "includeFiles": "anime-db.json"
+    }
+  }
+}

@@ -2,6 +2,7 @@ const fs = require("fs");
 
 const DB_FILE = "./anime-db.json";
 const IS_VERCEL = process.env.VERCEL === "1";
+const bundledDB = require("./anime-db.json");
 
 const defaultDB = {
   anime: [],
@@ -23,9 +24,14 @@ if (!IS_VERCEL && !fs.existsSync(DB_FILE)) {
 }
 
 function loadDB() {
-  const data = JSON.parse(
-    fs.readFileSync(DB_FILE, "utf8")
-  );
+  const data = IS_VERCEL
+    ? JSON.parse(JSON.stringify(bundledDB))
+    : JSON.parse(
+        fs.readFileSync(
+          require("path").join(__dirname, "anime-db.json"),
+          "utf8"
+        )
+      );
 
   if (!Array.isArray(data.anime)) data.anime = [];
   if (!Array.isArray(data.episodes)) data.episodes = [];
