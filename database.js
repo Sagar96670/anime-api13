@@ -23,10 +23,6 @@ if (!IS_VERCEL && !fs.existsSync(DB_FILE)) {
 }
 
 function loadDB() {
-  if (IS_VERCEL) {
-    return memoryDB;
-  }
-
   const data = JSON.parse(
     fs.readFileSync(DB_FILE, "utf8")
   );
