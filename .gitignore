@@ -10,10 +10,8 @@ yarn-error.log*
 .DS_Store
 
 # Local database
-anime-db.json
 
 # Database backups
-anime-db*.json
 
 # Temporary/test files
 headers.txt
@@ -54,3 +52,6 @@ README.md
 # Local file backups
 *.backup
 *.backup-*
+
+anime-db.backup*
+anime-db.before-*
