@@ -252,12 +252,15 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
       });
     }
 
+    console.log("[STREAM] Fetching episode source page:", episode.source_url);
+
     const sourcePage = await axios.get(episode.source_url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36"
+          "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       },
-      timeout: 15000
+      timeout: 6000
     });
 
     const html = sourcePage.data;
@@ -299,7 +302,7 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
           "Accept": "*/*"
         },
-        timeout: 15000,
+        timeout: 6000,
         validateStatus: () => true
       }
     );
@@ -355,12 +358,22 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Stream resolver error:", error.message);
+    console.error("[STREAM] Resolver failed:", {
+      message: error.message,
+      code: error.code,
+      upstreamStatus: error.response && error.response.status
+    });
 
-    return res.status(500).json({
+    const timedOut = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
+
+    return res.status(timedOut ? 504 : 502).json({
       status: false,
-      message: "Failed to resolve video stream",
-      error: error.message
+      message: timedOut
+        ? "Stream provider timed out while resolving the video. Please retry."
+        : "Stream provider request failed.",
+      error: error.message,
+      code: error.code || null,
+      upstream_status: error.response ? error.response.status : null
     });
   }
 });
