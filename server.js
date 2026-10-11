@@ -260,7 +260,7 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
           "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       },
-      timeout: 6000
+      timeout: 3500
     });
 
     const html = sourcePage.data;
