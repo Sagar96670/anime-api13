@@ -1065,6 +1065,26 @@ video:-webkit-full-screen {
         : "☰ Episode List";
   });
 
+  async function readApiJson(response, endpointName) {
+    const contentType = response.headers.get("content-type") || "";
+    const raw = await response.text();
+
+    if (!contentType.toLowerCase().includes("application/json")) {
+      const preview = raw.replace(/\\s+/g, " ").slice(0, 180);
+      throw new Error(
+        endpointName + " returned HTML/non-JSON (HTTP " +
+        response.status + "). Check the API deployment and route. " +
+        (preview ? "Response: " + preview : "")
+      );
+    }
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw new Error(endpointName + " returned malformed JSON (HTTP " + response.status + ").");
+    }
+  }
+
   async function loadEpisode() {
     if (!animeId || !season || !episode) {
       episodeTitle.textContent = "Episode information missing.";
@@ -1079,7 +1099,7 @@ video:-webkit-full-screen {
         `/api/anime/${encodeURIComponent(animeId)}/episodes?season=${encodeURIComponent(season)}&page=1&limit=30`
       );
 
-      const result = await episodeResponse.json();
+      const result = await readApiJson(episodeResponse, "Episodes API");
 
       if (!result.status || !result.data) {
         throw new Error("Episode API returned no data.");
@@ -1113,7 +1133,7 @@ video:-webkit-full-screen {
         `/api/anime/${encodeURIComponent(animeId)}/episode/${encodeURIComponent(season)}/${encodeURIComponent(episode)}/stream`
       );
 
-      const streamData = await streamResponse.json();
+      const streamData = await readApiJson(streamResponse, "Stream API");
 
       console.log("Stream API response:", streamData);
 
