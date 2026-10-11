@@ -265,22 +265,24 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
 
     const html = sourcePage.data;
 
-    // Find the direct CDN player hash from the episode page.
+    // Find the player URL from the episode page. The provider may change
+    // its CDN hostname, so derive the player host instead of hardcoding it.
     const playerMatch = html.match(
-      /(?:data-src|src)=["']https:\/\/as-cdn26\.top\/video\/([a-f0-9]+)["']/i
+      /(?:data-src|src|href)=["'](https?:\/\/[^"'<>\s]+\/video\/([a-f0-9]+)[^"'<>\s]*)["']/i
     );
 
     if (!playerMatch) {
       return res.status(502).json({
         status: false,
-        message: "Direct CDN player URL not found on source page"
+        message: "Video player URL not found on source page"
       });
     }
 
-    const playerId = playerMatch[1];
+    const playerUrl = new URL(playerMatch[1]);
+    const playerId = playerMatch[2];
 
     const playerDataUrl =
-      "https://as-cdn26.top/player/index.php" +
+      playerUrl.origin + "/player/index.php" +
       "?data=" + encodeURIComponent(playerId) +
       "&do=getVideo";
 
@@ -294,7 +296,7 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
       {
         headers: {
           "Referer": episode.source_url,
-          "Origin": "https://as-cdn26.top",
+          "Origin": playerUrl.origin,
           "X-Requested-With": "XMLHttpRequest",
           "Content-Type":
             "application/x-www-form-urlencoded; charset=UTF-8",
