@@ -1,7 +1,8 @@
 {
   "functions": {
     "server.js": {
-      "includeFiles": "anime-db.json"
+      "includeFiles": "anime-db.json",
+      "maxDuration": 30
     }
   }
 }
