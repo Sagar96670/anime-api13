@@ -475,7 +475,7 @@ app.get("/api/movies/:id/stream", async (req, res) => {
       const html = sourcePage.data;
 
       const playerMatch = html.match(
-        /(?:data-src|src)=["']https:\/\/as-cdn26\.top\/video\/([a-f0-9]+)["']/i
+        /(?:data-src|src)=["']https:\/\/ravok\.buzz\/video\/([a-f0-9]+)["']/i
       );
 
       if (playerMatch) {
@@ -491,7 +491,7 @@ app.get("/api/movies/:id/stream", async (req, res) => {
     }
 
     const playerUrl =
-      "https://as-cdn26.top/player/index.php?data=" +
+      "https://ravok.buzz/player/index.php?data=" +
       encodeURIComponent(playerHash) +
       "&do=getVideo";
 
@@ -508,7 +508,7 @@ app.get("/api/movies/:id/stream", async (req, res) => {
           "User-Agent":
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
           "Referer": movie.source_url || "https://animesalt.cx/",
-          "Origin": "https://as-cdn26.top",
+          "Origin": "https://ravok.buzz",
           "X-Requested-With": "XMLHttpRequest",
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
         },
@@ -570,7 +570,7 @@ app.get("/api/hls-proxy", async (req, res) => {
     const targetUrl = new URL(target);
 
     const allowedHosts = [
-      "as-cdn26.top",
+      "ravok.buzz",
       "as-cdn27.top",
       "as-cdn28.top",
       "as-cdn29.top",
