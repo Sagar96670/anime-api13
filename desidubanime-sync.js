@@ -9,7 +9,8 @@ const TIMEOUT = 20000;
 const DELAY_MS = 250;
 const CONCURRENCY = 3;
 const CATALOG_SEEDS = [
-  "/anime/",
+  "/",
+  "/az-list/",
   "/anime-type/tv/",
   "/anime-type/movie/"
 ];
@@ -165,6 +166,7 @@ function extractCatalogLinks(html, currentUrl) {
     if (slug) anime.set(slug, url.href);
 
     const isCatalogPage =
+      /^\/az-list\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
       /^\/anime\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
       /^\/anime-type\/(?:tv|movie)\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
       /[?&](?:page|page_no)=\d+/i.test(url.search);
@@ -253,6 +255,18 @@ async function syncAll() {
 
   if (db.anime.length === 0 && db.movies.length === 0) {
     throw new Error("No anime or movies were parsed; keeping the existing database unchanged.");
+  }
+
+  // Do not replace the populated catalog with a partial scrape.
+  const existing = loadDB();
+  const existingTitles = existing.anime.length + existing.movies.length;
+  const newTitles = db.anime.length + db.movies.length;
+  const existingEpisodes = existing.episodes.length;
+  if (existingTitles >= 100 && newTitles < Math.ceil(existingTitles * 0.5)) {
+    throw new Error("Incomplete source scrape (" + newTitles + "/" + existingTitles + " titles); keeping the existing database unchanged.");
+  }
+  if (existingEpisodes >= 1000 && db.episodes.length < Math.ceil(existingEpisodes * 0.2)) {
+    throw new Error("Episode scrape appears incomplete (" + db.episodes.length + "/" + existingEpisodes + " episodes); keeping the existing database unchanged.");
   }
 
   saveDB(db);
