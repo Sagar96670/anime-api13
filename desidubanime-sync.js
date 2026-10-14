@@ -10,6 +10,7 @@ const DELAY_MS = 250;
 const CONCURRENCY = 3;
 const CATALOG_SEEDS = [
   "/",
+  "/anime/",
   "/az-list/",
   "/anime-type/tv/",
   "/anime-type/movie/"
@@ -28,6 +29,10 @@ async function fetchHTML(url) {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     }
   });
+  const finalUrl = response.request?.res?.responseUrl || url;
+  if (new URL(finalUrl).pathname !== new URL(url).pathname) {
+    console.log("[REDIRECT]", url, "=>", finalUrl);
+  }
   return typeof response.data === "string" ? response.data : "";
 }
 
@@ -193,7 +198,7 @@ async function discoverCatalog() {
       for (const next of found.pages) {
         if (!visited.has(next)) queue.push(next);
       }
-      console.log("[CATALOG]", url, "items:", anime.size);
+      console.log("[CATALOG]", url, "found:", found.anime.size, "unique total:", anime.size, "pagination links:", found.pages.size);
     } catch (error) {
       console.log("[CATALOG FAILED]", url, error.message);
     }
