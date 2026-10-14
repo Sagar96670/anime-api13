@@ -1137,10 +1137,28 @@ video:-webkit-full-screen {
 
       console.log("Stream API response:", streamData);
 
-      if (!streamResponse.ok || !streamData.status || !streamData.video_url) {
-        throw new Error(
-          streamData.message || "Video stream URL not found."
-        );
+      if (!streamResponse.ok || !streamData.status) {
+        throw new Error(streamData.message || "Episode playback information not found.");
+      }
+
+      if (streamData.watch_url && !streamData.video_url) {
+        const playerContainer = document.querySelector(".player");
+        if (playerContainer) playerContainer.style.display = "none";
+
+        status.textContent = "Playback is hosted on DesiDubAnime. ";
+        const sourceLink = document.createElement("a");
+        sourceLink.href = streamData.watch_url;
+        sourceLink.target = "_blank";
+        sourceLink.rel = "noopener noreferrer";
+        sourceLink.textContent = "Open episode on DesiDubAnime";
+        sourceLink.style.color = "#ff7a18";
+        sourceLink.style.fontWeight = "bold";
+        status.appendChild(sourceLink);
+        return;
+      }
+
+      if (!streamData.video_url) {
+        throw new Error("Video stream URL not found.");
       }
 
       if (streamData.poster) {
