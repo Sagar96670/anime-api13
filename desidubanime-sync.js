@@ -216,6 +216,9 @@ async function runPool(items, worker, concurrency = CONCURRENCY) {
 async function syncAll() {
   console.log("Starting full DesiDubAnime catalog sync...");
   const catalog = await discoverCatalog();
+  if (catalog.anime.size === 0) {
+    throw new Error("Catalog discovery returned no anime pages; keeping the existing database unchanged.");
+  }
   const db = { anime: [], episodes: [], movies: [] };
 
   await runPool([...catalog.anime.entries()], async ([id, url]) => {
@@ -247,6 +250,10 @@ async function syncAll() {
     a.season - b.season ||
     a.episode_number - b.episode_number
   );
+
+  if (db.anime.length === 0 && db.movies.length === 0) {
+    throw new Error("No anime or movies were parsed; keeping the existing database unchanged.");
+  }
 
   saveDB(db);
   console.log("DesiDubAnime sync complete:", {
