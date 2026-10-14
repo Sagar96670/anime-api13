@@ -1,3 +1,4 @@
+# Sync the bundled catalog so Vercel deployments receive updated data.
 name: Sync DesiDubAnime Catalog
 
 on:
