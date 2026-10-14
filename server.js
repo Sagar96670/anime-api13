@@ -211,177 +211,76 @@ app.get("/api/anime/:id/seasons", (req, res) => {
 });
 
 
-// Resolve a fresh HLS video URL for an episode
-app.get("/api/anime/:id/episode/:season/:episode/stream", async (req, res) => {
-  try {
-    const db = loadDB();
+// DesiDubAnime episode playback is hosted on its own watch page.
+// Return the official watch-page URL; do not attempt to extract or proxy protected player media.
+app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
+  const db = loadDB();
+  const animeId = String(req.params.id);
+  const season = Number(req.params.season);
+  const episodeNumber = Number(req.params.episode);
 
-    const animeId = String(req.params.id);
-    const season = Number(req.params.season);
-    const episodeNumber = Number(req.params.episode);
-
-    if (
-      !Number.isInteger(season) ||
-      season < 1 ||
-      !Number.isInteger(episodeNumber) ||
-      episodeNumber < 1
-    ) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid season or episode number"
-      });
-    }
-
-    const episode = db.episodes.find(item =>
-      String(item.anime_id) === animeId &&
-      Number(item.season) === season &&
-      Number(item.episode_number) === episodeNumber
-    );
-
-    if (!episode) {
-      return res.status(404).json({
-        status: false,
-        message: "Episode not found"
-      });
-    }
-
-    if (!episode.source_url) {
-      return res.status(404).json({
-        status: false,
-        message: "Episode source URL not found"
-      });
-    }
-
-    console.log("[STREAM] Fetching episode source page:", episode.source_url);
-
-    const sourcePage = await axios.get(episode.source_url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-      },
-      timeout: 12000
-    });
-
-    const html = sourcePage.data;
-
-    // Find the player URL from the episode page. The provider may change
-    // its CDN hostname, so derive the player host instead of hardcoding it.
-    const playerMatch = html.match(
-      /(?:data-src|src|href)=["'](https?:\/\/[^"'<>\s]+\/video\/([a-f0-9]+)[^"'<>\s]*)["']/i
-    );
-
-    if (!playerMatch) {
-      return res.status(502).json({
-        status: false,
-        message: "Video player URL not found on source page"
-      });
-    }
-
-    const playerUrl = new URL(playerMatch[1]);
-    const playerId = playerMatch[2];
-
-    const playerDataUrl =
-      playerUrl.origin + "/player/index.php" +
-      "?data=" + encodeURIComponent(playerId) +
-      "&do=getVideo";
-
-    const formBody =
-      "hash=" + encodeURIComponent(playerId) +
-      "&r=" + encodeURIComponent(episode.source_url);
-
-    const videoResponse = await axios.post(
-      playerDataUrl,
-      formBody,
-      {
-        headers: {
-          "Referer": episode.source_url,
-          "Origin": playerUrl.origin,
-          "X-Requested-With": "XMLHttpRequest",
-          "Content-Type":
-            "application/x-www-form-urlencoded; charset=UTF-8",
-          "User-Agent":
-            "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
-          "Accept": "*/*"
-        },
-        timeout: 12000,
-        validateStatus: () => true
-      }
-    );
-
-    console.log("PLAYER STATUS:", videoResponse.status);
-    console.log(
-      "PLAYER CONTENT-TYPE:",
-      videoResponse.headers["content-type"]
-    );
-    console.log("PLAYER DATA TYPE:", typeof videoResponse.data);
-
-    let videoData = videoResponse.data;
-
-    // Axios normally parses this response as JSON automatically.
-    if (typeof videoData === "string") {
-      const raw = videoData.trim();
-
-      if (!raw) {
-        return res.status(502).json({
-          status: false,
-          message: "Player returned an empty response"
-        });
-      }
-
-      try {
-        videoData = JSON.parse(raw);
-      } catch (err) {
-        return res.status(502).json({
-          status: false,
-          message: "Player returned invalid JSON",
-          response_preview: raw.slice(0, 500)
-        });
-      }
-    }
-
-    if (!videoData || !videoData.videoSource) {
-      return res.status(502).json({
-        status: false,
-        message: "Video source not returned by player"
-      });
-    }
-
-    return res.json({
-      status: true,
-      anime_id: animeId,
-      season,
-      episode: episodeNumber,
-      title: episode.title || ("Episode " + episodeNumber),
-      hls: Boolean(videoData.hls),
-      video_url: videoData.videoSource,
-      poster: videoData.videoImage || null,
-      secured_link: videoData.securedLink || null
-    });
-
-  } catch (error) {
-    console.error("[STREAM] Resolver failed:", {
-      message: error.message,
-      code: error.code,
-      upstreamStatus: error.response && error.response.status
-    });
-
-    const timedOut = error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
-
-    return res.status(timedOut ? 504 : 502).json({
+  if (!Number.isInteger(season) || season < 1 ||
+      !Number.isInteger(episodeNumber) || episodeNumber < 1) {
+    return res.status(400).json({
       status: false,
-      message: timedOut
-        ? "Stream provider timed out while resolving the video. Please retry."
-        : "Stream provider request failed.",
-      error: error.message,
-      code: error.code || null,
-      upstream_status: error.response ? error.response.status : null
+      message: "Invalid season or episode number"
     });
   }
+
+  const episode = db.episodes.find(item =>
+    String(item.anime_id) === animeId &&
+    Number(item.season) === season &&
+    Number(item.episode_number) === episodeNumber
+  );
+
+  if (!episode) {
+    return res.status(404).json({ status: false, message: "Episode not found" });
+  }
+
+  return res.json({
+    status: true,
+    anime_id: animeId,
+    season,
+    episode: episodeNumber,
+    title: episode.title || ("Episode " + episodeNumber),
+    watch_url: episode.source_url,
+    playback: "external_watch_page"
+  });
 });
 
+// Search the DesiDubAnime-backed catalog.
+app.get("/api/search", (req, res) => {
+  const db = loadDB();
+  const query = String(req.query.q || req.query.query || "").trim().toLowerCase();
+  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
 
+  if (!query) {
+    return res.status(400).json({
+      status: false,
+      message: "Search query is required. Use ?q=naruto"
+    });
+  }
 
+  const series = db.anime
+    .filter(item => [item.title, item.description, item.id].some(value =>
+      String(value || "").toLowerCase().includes(query)
+    ))
+    .map(item => ({ ...item, content_type: "series" }));
+
+  const movies = db.movies
+    .filter(item => [item.title, item.description, item.id].some(value =>
+      String(value || "").toLowerCase().includes(query)
+    ))
+    .map(item => ({ ...item, content_type: "movie" }));
+
+  const data = [...series, ...movies].slice(0, limit);
+  return res.json({
+    status: true,
+    query,
+    total: series.length + movies.length,
+    data
+  });
+});
 
 // ==================== UNIFIED CATALOG API ====================
 
@@ -444,118 +343,22 @@ app.get("/api/movies/:id", (req, res) => {
   });
 });
 
-// Movie stream resolver
-app.get("/api/movies/:id/stream", async (req, res) => {
-  try {
-    const db = loadDB();
+// Return the official DesiDubAnime movie/watch page rather than extracting protected media.
+app.get("/api/movies/:id/stream", (req, res) => {
+  const db = loadDB();
+  const movie = db.movies.find(item => String(item.id) === String(req.params.id));
 
-    const movie = db.movies.find(
-      item => String(item.id) === String(req.params.id)
-    );
-
-    if (!movie) {
-      return res.status(404).json({
-        status: false,
-        message: "Movie not found"
-      });
-    }
-
-    let playerHash = movie.player_hash;
-
-    // Hash missing हो तो source page से निकालो
-    if (!playerHash && movie.source_url) {
-      const sourcePage = await axios.get(movie.source_url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36"
-        },
-        timeout: 15000
-      });
-
-      const html = sourcePage.data;
-
-      const playerMatch = html.match(
-        /(?:data-src|src)=["']https:\/\/ravok\.buzz\/video\/([a-f0-9]+)["']/i
-      );
-
-      if (playerMatch) {
-        playerHash = playerMatch[1];
-      }
-    }
-
-    if (!playerHash) {
-      return res.status(502).json({
-        status: false,
-        message: "Movie player hash not found"
-      });
-    }
-
-    const playerUrl =
-      "https://ravok.buzz/player/index.php?data=" +
-      encodeURIComponent(playerHash) +
-      "&do=getVideo";
-
-    const form = new URLSearchParams({
-      hash: playerHash,
-      r: movie.source_url || ""
-    }).toString();
-
-    const playerResponse = await axios.post(
-      playerUrl,
-      form,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
-          "Referer": movie.source_url || "https://animesalt.cx/",
-          "Origin": "https://ravok.buzz",
-          "X-Requested-With": "XMLHttpRequest",
-          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
-        },
-        timeout: 15000
-      }
-    );
-
-    let videoData = playerResponse.data;
-
-    if (typeof videoData === "string") {
-      try {
-        videoData = JSON.parse(videoData);
-      } catch {
-        return res.status(502).json({
-          status: false,
-          message: "Movie player returned invalid JSON",
-          response_preview: videoData.slice(0, 500)
-        });
-      }
-    }
-
-    if (!videoData || !videoData.videoSource) {
-      return res.status(502).json({
-        status: false,
-        message: "Movie video source not returned by player"
-      });
-    }
-
-    return res.json({
-      status: true,
-      movie_id: movie.id,
-      title: movie.title,
-      hls: Boolean(videoData.hls),
-      video_url: videoData.videoSource,
-      poster: videoData.videoImage || movie.poster || null,
-      secured_link: videoData.securedLink || null
-    });
-
-  } catch (error) {
-    console.error("Movie stream resolver error:", error.message);
-
-    return res.status(500).json({
-      status: false,
-      message: "Failed to resolve movie video stream",
-      error: error.message
-    });
+  if (!movie) {
+    return res.status(404).json({ status: false, message: "Movie not found" });
   }
+
+  return res.json({
+    status: true,
+    movie_id: movie.id,
+    title: movie.title,
+    watch_url: movie.watch_url || movie.source_url,
+    playback: "external_watch_page"
+  });
 });
 
 // HLS proxy
