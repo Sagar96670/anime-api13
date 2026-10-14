@@ -198,7 +198,13 @@ async function discoverCatalog() {
       for (const next of found.pages) {
         if (!visited.has(next)) queue.push(next);
       }
-      console.log("[CATALOG]", url, "found:", found.anime.size, "unique total:", anime.size, "pagination links:", found.pages.size);
+      const $debug = cheerio.load(html);
+      const sampleLinks = [];
+      $debug("a[href]").each((_, el) => {
+        const href = $debug(el).attr("href") || "";
+        if (/anime|title|show|series|detail/i.test(href) && sampleLinks.length < 12) sampleLinks.push(href);
+      });
+      console.log("[CATALOG]", url, "title:", $debug("title").text().trim(), "found:", found.anime.size, "unique total:", anime.size, "pagination links:", found.pages.size, "sample links:", JSON.stringify(sampleLinks));
     } catch (error) {
       console.log("[CATALOG FAILED]", url, error.message);
     }
