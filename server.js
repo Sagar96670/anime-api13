@@ -1,5 +1,4 @@
 const express = require("express");
-const axios = require("axios");
 const cors = require("cors");
 const { loadDB } = require("./database");
 const { syncAll } = require("./sync-anime");
@@ -361,123 +360,6 @@ app.get("/api/movies/:id/stream", (req, res) => {
   });
 });
 
-// HLS proxy
-app.get("/api/hls-proxy", async (req, res) => {
-  try {
-    const target = req.query.url;
-
-    if (!target) {
-      return res.status(400).send("Missing url");
-    }
-
-    const targetUrl = new URL(target);
-
-    const allowedHosts = [
-      "ravok.buzz",
-      "as-cdn27.top",
-      "as-cdn28.top",
-      "as-cdn29.top",
-      "as-cdn30.top"
-    ];
-
-    if (!allowedHosts.includes(targetUrl.hostname)) {
-      return res.status(403).send("Host not allowed");
-    }
-
-    const response = await axios.get(targetUrl.toString(), {
-      responseType: "arraybuffer",
-      timeout: 20000,
-      validateStatus: () => true
-    });
-
-    if (response.status < 200 || response.status >= 300) {
-      return res.status(response.status).send(
-        Buffer.from(response.data)
-      );
-    }
-
-    const contentType =
-      String(response.headers["content-type"] || "").toLowerCase();
-
-    const isPlaylist =
-      targetUrl.pathname.endsWith(".m3u8") ||
-      contentType.includes("mpegurl") ||
-      contentType.includes("mpegurl");
-
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Cache-Control", "no-store");
-
-    if (isPlaylist) {
-      let playlist =
-        Buffer.from(response.data).toString("utf8");
-
-      const proxyUrl = (url) =>
-        "/api/hls-proxy?url=" +
-        encodeURIComponent(url);
-
-      const lines = playlist.split(/\r?\n/);
-
-      const rewritten = lines.map(line => {
-        const trimmed = line.trim();
-
-        if (!trimmed) {
-          return line;
-        }
-
-        if (trimmed.startsWith("#")) {
-          return line.replace(
-            /URI="([^"]+)"/g,
-            (match, uri) => {
-              try {
-                const absolute =
-                  new URL(uri, targetUrl).toString();
-
-                return 'URI="' +
-                  proxyUrl(absolute) +
-                  '"';
-              } catch {
-                return match;
-              }
-            }
-          );
-        }
-
-        try {
-          const absolute =
-            new URL(trimmed, targetUrl).toString();
-
-          return proxyUrl(absolute);
-        } catch {
-          return line;
-        }
-      });
-
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.apple.mpegurl"
-      );
-
-      return res.send(rewritten.join("\n"));
-    }
-
-    res.setHeader(
-      "Content-Type",
-      response.headers["content-type"] ||
-      "application/octet-stream"
-    );
-
-    return res.send(Buffer.from(response.data));
-
-  } catch (error) {
-    console.error("HLS proxy error:", error.message);
-
-    return res.status(502).send(
-      "HLS proxy error: " + error.message
-    );
-  }
-});
-
-
 // ==========================================
 // AUTO SYNC SCHEDULER
 // ==========================================
@@ -548,17 +430,15 @@ app.listen(PORT, () => {
     `Anime API running on http://localhost:${PORT}`
   );
 
-  // Start sync in the background so the API
-  // can become available immediately.
-  runAutoSync();
-
-  // Continue checking for new anime/episodes/movies.
-  setInterval(
-    runAutoSync,
-    SYNC_INTERVAL_MS
-  );
-
-  console.log(
-    `[AUTO SYNC] Interval: ${SYNC_INTERVAL_MS / 60000} minutes`
-  );
+  // Vercel functions are short-lived and read the bundled database.
+  // Run sync locally and deploy the refreshed anime-db.json instead.
+  if (process.env.VERCEL !== "1") {
+    runAutoSync();
+    setInterval(runAutoSync, SYNC_INTERVAL_MS);
+    console.log(
+      `[AUTO SYNC] Interval: ${SYNC_INTERVAL_MS / 60000} minutes`
+    );
+  } else {
+    console.log("[AUTO SYNC] Disabled on Vercel; refresh anime-db.json locally before deploying.");
+  }
 });
