@@ -259,7 +259,7 @@ async function syncAll() {
 }
 
 async function incrementalSync() {
-  // Source switch is intentional: rebuild the catalog so no Anime Salt records remain.
+  // Rebuild the catalog from the configured source to avoid stale records.
   return syncAll();
 }
 
