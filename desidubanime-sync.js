@@ -171,9 +171,9 @@ function extractCatalogLinks(html, currentUrl) {
     if (slug) anime.set(slug, url.href);
 
     const isCatalogPage =
-      /^\/az-list\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
-      /^\/anime\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
-      /^\/anime-type\/(?:tv|movie)\/(?:page\/\d+\/)?$/i.test(url.pathname) ||
+      /^\/az-list\/page\/\d+\/?$/i.test(url.pathname) ||
+      /^\/anime\/page\/\d+\/?$/i.test(url.pathname) ||
+      /^\/anime-type\/(?:tv|movie)\/page\/\d+\/?$/i.test(url.pathname) ||
       /[?&](?:page|page_no)=\d+/i.test(url.search);
     if (isCatalogPage) pages.add(url.href);
   });
