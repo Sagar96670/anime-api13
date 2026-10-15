@@ -167,10 +167,46 @@ async function loadMovie() {
 
     const streamData = await streamResponse.json();
 
-    if (!streamData.status || !streamData.video_url) {
+    if (!streamResponse.ok || !streamData.status) {
       throw new Error(
-        streamData.message || "Movie video source not available"
+        streamData.message || "Movie information not available"
       );
+    }
+
+    // DesiDubAnime provides a watch page for this movie. Open that page
+    // instead of expecting a direct media URL from the API.
+    if (streamData.watch_url) {
+      let watchUrl;
+
+      try {
+        watchUrl = new URL(streamData.watch_url, window.location.href);
+      } catch {
+        throw new Error("Movie watch link is invalid.");
+      }
+
+      if (
+        watchUrl.protocol !== "https:" ||
+        !["desidubanime.me", "www.desidubanime.me"].includes(watchUrl.hostname)
+      ) {
+        throw new Error("Movie watch link is not from DesiDubAnime.");
+      }
+
+      const link = document.createElement("a");
+      link.href = watchUrl.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Watch movie on DesiDubAnime";
+      link.className = "watch-link";
+
+      status.replaceChildren(
+        document.createTextNode("This movie is hosted on DesiDubAnime. "),
+        link
+      );
+      return;
+    }
+
+    if (!streamData.video_url) {
+      throw new Error("Movie watch link or video source not available.");
     }
 
     const videoUrl =
