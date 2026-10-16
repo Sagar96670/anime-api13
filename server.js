@@ -416,7 +416,7 @@ app.get("/api/hls-proxy", async (req, res) => {
       responseType: isManifest ? "text" : "stream",
       timeout: 20000,
       maxRedirects: 0,
-      validateStatus: status => status >= 200 && status < 400,
+      validateStatus: status => status >= 200 && status < 300,
       headers: {
         "User-Agent": "Mozilla/5.0",
         "Accept": isManifest ? "application/vnd.apple.mpegurl,application/x-mpegURL,text/plain,*/*" : "*/*",
@@ -442,6 +442,13 @@ app.get("/api/hls-proxy", async (req, res) => {
           const child = new URL(value, target.href);
           if (!getAllowedHlsHosts().includes(child.hostname.toLowerCase()) ||
               child.protocol !== "https:") return raw;
+          // Some authorized HLS providers use a shared query token on relative segments.
+          if (!/^[a-z][a-z0-9+.-]*:/i.test(value) &&
+              !value.startsWith("//") &&
+              !child.search &&
+              target.search) {
+            child.search = target.search;
+          }
           return proxiedHlsUrl(child);
         } catch {
           return raw;
