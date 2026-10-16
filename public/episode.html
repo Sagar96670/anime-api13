@@ -1165,9 +1165,11 @@ video:-webkit-full-screen {
         video.poster = streamData.poster;
       }
 
-      // Direct .m3u8 URLs can play in HLS.js when the upstream server allows CORS.
-      // Do not proxy or extract media from a third-party watch page.
-      const videoUrl = streamData.video_url;
+      // Proxy only direct HLS URLs whose CDN host is explicitly allowlisted
+      // in HLS_ALLOWED_HOSTS on the server. Watch pages are never extracted.
+      const videoUrl =
+        "/api/hls-proxy?url=" +
+        encodeURIComponent(streamData.video_url);
 
       if (window.Hls && Hls.isSupported()) {
         console.log("Using HLS.js");
