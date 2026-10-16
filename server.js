@@ -371,6 +371,123 @@ app.get("/api/movies/:id/stream", (req, res) => {
   });
 });
 
+// HLS proxy for DIRECT, authorized media URLs only.
+// Configure exact CDN hostnames in HLS_ALLOWED_HOSTS (comma-separated).
+// This intentionally does not scrape/extract media from third-party watch pages.
+function getAllowedHlsHosts() {
+  return String(process.env.HLS_ALLOWED_HOSTS || "")
+    .split(",")
+    .map(host => host.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getAllowedHlsUrl(rawUrl) {
+  let target;
+  try {
+    target = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const allowedHosts = getAllowedHlsHosts();
+  if (target.protocol !== "https:" ||
+      target.username || target.password ||
+      !allowedHosts.includes(target.hostname.toLowerCase())) {
+    return null;
+  }
+  return target;
+}
+
+function proxiedHlsUrl(targetUrl) {
+  return "/api/hls-proxy?url=" + encodeURIComponent(targetUrl.href);
+}
+
+app.get("/api/hls-proxy", async (req, res) => {
+  const target = getAllowedHlsUrl(String(req.query.url || ""));
+  if (!target) {
+    return res.status(403).json({
+      status: false,
+      message: "HLS source host is not allowed. Configure HLS_ALLOWED_HOSTS with the authorized media CDN hostname."
+    });
+  }
+
+  const isManifest = /\.m3u8$/i.test(target.pathname);
+  try {
+    const upstream = await axios.get(target.href, {
+      responseType: isManifest ? "text" : "stream",
+      timeout: 20000,
+      maxRedirects: 0,
+      validateStatus: status => status >= 200 && status < 400,
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": isManifest ? "application/vnd.apple.mpegurl,application/x-mpegURL,text/plain,*/*" : "*/*",
+        ...(req.headers.range ? { Range: req.headers.range } : {})
+      }
+    });
+
+    if (isManifest) {
+      let body = typeof upstream.data === "string"
+        ? upstream.data
+        : String(upstream.data || "");
+      if (!body.trimStart().startsWith("#EXTM3U")) {
+        return res.status(502).json({
+          status: false,
+          message: "Configured HLS URL did not return an HLS playlist."
+        });
+      }
+
+      const rewriteUri = raw => {
+        const value = String(raw || "").trim();
+        if (!value || value.startsWith("data:")) return raw;
+        try {
+          const child = new URL(value, target.href);
+          if (!getAllowedHlsHosts().includes(child.hostname.toLowerCase()) ||
+              child.protocol !== "https:") return raw;
+          return proxiedHlsUrl(child);
+        } catch {
+          return raw;
+        }
+      };
+
+      body = body
+        .replace(/URI="([^"]+)"/g, (match, uri) => {
+          const rewritten = rewriteUri(uri);
+          return rewritten === uri ? match : 'URI="' + rewritten + '"';
+        })
+        .split(/\r?\n/)
+        .map(line => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) return line;
+          return rewriteUri(trimmed);
+        })
+        .join("\n");
+
+      res.status(upstream.status);
+      res.set("Content-Type", "application/vnd.apple.mpegurl; charset=utf-8");
+      res.set("Cache-Control", "no-store");
+      return res.send(body);
+    }
+
+    res.status(upstream.status);
+    for (const header of ["content-type", "content-length", "content-range", "accept-ranges"]) {
+      if (upstream.headers[header]) res.set(header, upstream.headers[header]);
+    }
+    res.set("Cache-Control", "no-store");
+    if (upstream.status === 206) res.status(206);
+    upstream.data.on("error", error => {
+      console.error("[HLS PROXY] upstream stream error:", error.message);
+      if (!res.headersSent) res.status(502);
+      res.end();
+    });
+    return upstream.data.pipe(res);
+  } catch (error) {
+    console.warn("[HLS PROXY] request failed:", error.message);
+    return res.status(502).json({
+      status: false,
+      message: "Authorized HLS source could not be fetched. Check the URL, CDN allowlist, and upstream CORS/access requirements."
+    });
+  }
+});
+
 // ==========================================
 // AUTO SYNC SCHEDULER
 // ==========================================
