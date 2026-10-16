@@ -236,14 +236,25 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
     return res.status(404).json({ status: false, message: "Episode not found" });
   }
 
+  // Play a direct HLS URL only when the catalog entry itself is an .m3u8 URL.
+  // Otherwise, send users to the source's own watch page.
+  let directHlsUrl = null;
+  try {
+    const sourceUrl = new URL(episode.source_url);
+    if (sourceUrl.protocol === "https:" && /\.m3u8$/i.test(sourceUrl.pathname)) {
+      directHlsUrl = sourceUrl.href;
+    }
+  } catch {}
+
   return res.json({
     status: true,
     anime_id: animeId,
     season,
     episode: episodeNumber,
     title: episode.title || ("Episode " + episodeNumber),
-    watch_url: episode.source_url,
-    playback: "external_watch_page"
+    ...(directHlsUrl
+      ? { video_url: directHlsUrl, playback: "direct_hls" }
+      : { watch_url: episode.source_url, playback: "external_watch_page" })
   });
 });
 
