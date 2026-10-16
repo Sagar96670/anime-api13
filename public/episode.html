@@ -1145,7 +1145,7 @@ video:-webkit-full-screen {
         const playerContainer = document.querySelector(".player");
         if (playerContainer) playerContainer.style.display = "none";
 
-        status.textContent = "Playback is hosted on DesiDubAnime. ";
+        status.textContent = "This episode is hosted on DesiDubAnime. ";
         const sourceLink = document.createElement("a");
         sourceLink.href = streamData.watch_url;
         sourceLink.target = "_blank";
@@ -1165,9 +1165,9 @@ video:-webkit-full-screen {
         video.poster = streamData.poster;
       }
 
-      const videoUrl =
-        "/api/hls-proxy?url=" +
-        encodeURIComponent(streamData.video_url);
+      // Direct .m3u8 URLs can play in HLS.js when the upstream server allows CORS.
+      // Do not proxy or extract media from a third-party watch page.
+      const videoUrl = streamData.video_url;
 
       if (window.Hls && Hls.isSupported()) {
         console.log("Using HLS.js");
