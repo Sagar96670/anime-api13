@@ -362,12 +362,22 @@ app.get("/api/movies/:id/stream", (req, res) => {
     return res.status(404).json({ status: false, message: "Movie not found" });
   }
 
+  const candidateUrl = movie.watch_url || movie.source_url;
+  let directHlsUrl = null;
+  try {
+    const sourceUrl = new URL(candidateUrl);
+    if (sourceUrl.protocol === "https:" && /\.m3u8$/i.test(sourceUrl.pathname)) {
+      directHlsUrl = sourceUrl.href;
+    }
+  } catch {}
+
   return res.json({
     status: true,
     movie_id: movie.id,
     title: movie.title,
-    watch_url: movie.watch_url || movie.source_url,
-    playback: "external_watch_page"
+    ...(directHlsUrl
+      ? { video_url: directHlsUrl, playback: "direct_hls" }
+      : { watch_url: candidateUrl, playback: "external_watch_page" })
   });
 });
 
