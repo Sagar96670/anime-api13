@@ -1,7 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { loadDB, saveDB } = require("./database");
-const { isBloggerWritable, upsertCatalog } = require("./blogger-store");
+const { isBloggerConfigured, isBloggerWritable, upsertCatalog } = require("./blogger-store");
 
 const BASE = "https://www.desidubanime.me";
 const USER_AGENT =
@@ -279,6 +279,10 @@ async function syncAll() {
   }
   if (existingEpisodes >= 1000 && db.episodes.length < Math.ceil(existingEpisodes * 0.2)) {
     throw new Error("Episode scrape appears incomplete (" + db.episodes.length + "/" + existingEpisodes + " episodes); keeping the existing database unchanged.");
+  }
+
+  if (isBloggerConfigured() && !isBloggerWritable()) {
+    throw new Error("Blogger is configured for reading but OAuth write credentials are missing.");
   }
 
   saveDB(db);
