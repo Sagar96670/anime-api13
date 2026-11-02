@@ -106,7 +106,7 @@ app.get("/", (req, res) => {
 
 // All anime
 app.get("/api/anime", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   res.json({
     status: true,
@@ -117,7 +117,7 @@ app.get("/api/anime", (req, res) => {
 
 // Single anime + all episodes
 app.get("/api/anime/:id", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -153,7 +153,7 @@ app.get("/api/anime/:id", (req, res) => {
 
 // Episodes + season filter + pagination
 app.get("/api/anime/:id/episodes", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -245,7 +245,7 @@ app.get("/api/anime/:id/episodes", (req, res) => {
 
 // Season list with episode counts
 app.get("/api/anime/:id/seasons", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -300,7 +300,7 @@ app.get("/api/anime/:id/seasons", (req, res) => {
 // DesiDubAnime episode playback is hosted on its own watch page.
 // Return the official watch-page URL; do not attempt to extract or proxy protected player media.
 app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const animeId = String(req.params.id);
   const season = Number(req.params.season);
   const episodeNumber = Number(req.params.episode);
@@ -347,7 +347,7 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
 
 // Search the DesiDubAnime-backed catalog.
 app.get("/api/search", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const query = String(req.query.q || req.query.query || "").trim().toLowerCase();
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
 
@@ -383,7 +383,7 @@ app.get("/api/search", (req, res) => {
 
 // Series + Movies together
 app.get("/api/catalog", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const series = db.anime.map(item => ({
     ...item,
@@ -410,7 +410,7 @@ app.get("/api/catalog", (req, res) => {
 
 // All movies
 app.get("/api/movies", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   res.json({
     status: true,
@@ -421,7 +421,7 @@ app.get("/api/movies", (req, res) => {
 
 // Single movie
 app.get("/api/movies/:id", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const movie = db.movies.find(
     item => String(item.id) === String(req.params.id)
@@ -442,7 +442,7 @@ app.get("/api/movies/:id", (req, res) => {
 
 // Return the official DesiDubAnime movie/watch page rather than extracting protected media.
 app.get("/api/movies/:id/stream", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const movie = db.movies.find(item => String(item.id) === String(req.params.id));
 
   if (!movie) {
