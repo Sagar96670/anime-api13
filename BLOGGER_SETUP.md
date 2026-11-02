@@ -8,7 +8,7 @@ This branch adds Blogger API v3 as the primary catalog store. The existing JSON 
 2. In Blogger settings, keep the blog public so the API can read published posts.
 3. Find the numeric Blog ID in Blogger settings or the Blogger dashboard URL.
 
-The scraper stores one post per anime/movie. The post title is the anime title; the post body contains a JSON record inside a `<pre>` element. Posts use the labels `anime-api-v1` and `series` or `movie`.
+The scraper stores one post per anime/movie. The post title is the anime title; the post body contains a JSON record inside a `<pre>` element. Posts use the labels `anime-api-v1` and `series` or `movie`. The API reads the public Blogger JSON Feed (`/feeds/posts/default?alt=json`) and uses Blogger API v3 OAuth for writes.
 
 ## 2. Enable Blogger API v3
 
@@ -26,7 +26,8 @@ A service account is not used here; writes are performed as the Blogger owner th
 Copy `.env.example` to `.env` for local testing and fill in:
 
 - `BLOGGER_BLOG_ID`
-- `BLOGGER_API_KEY`
+- `BLOGGER_FEED_URL` (for example `https://your-blog.blogspot.com/feeds/posts/default?alt=json`)
+- `BLOGGER_API_KEY` (optional fallback for reading through API v3)
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN`
@@ -59,7 +60,7 @@ Do not trigger the first full sync until Blogger OAuth and blog ID values are co
 - `GET /api/v1/health` — reports active storage mode.
 - `POST /api/v1/sync` — manual sync; send `Authorization: Bearer <SYNC_SECRET>`.
 
-When Blogger credentials are present, catalog endpoints read Blogger API v3 posts and use a short per-instance cache. Without credentials they continue to read the bundled/local JSON database, allowing safe migration and rollback.
+When Blogger credentials are present, catalog endpoints read Blogger API v3 posts and use a short per-instance cache. Without Blogger feed/API credentials they continue to read the bundled/local JSON database, allowing safe migration and rollback.
 
 ## 6. Scheduled sync
 
