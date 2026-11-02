@@ -9,6 +9,7 @@ const REQUEST_TIMEOUT = 20000;
 function config() {
   return {
     blogId: String(process.env.BLOGGER_BLOG_ID || "").trim(),
+    feedUrl: String(process.env.BLOGGER_FEED_URL || "").trim(),
     apiKey: String(process.env.BLOGGER_API_KEY || "").trim(),
     clientId: String(process.env.GOOGLE_CLIENT_ID || "").trim(),
     clientSecret: String(process.env.GOOGLE_CLIENT_SECRET || "").trim(),
@@ -18,7 +19,7 @@ function config() {
 
 function isBloggerConfigured() {
   const c = config();
-  return Boolean(c.blogId && (c.apiKey || (c.clientId && c.clientSecret && c.refreshToken)));
+  return Boolean(c.blogId && (c.feedUrl || c.apiKey || (c.clientId && c.clientSecret && c.refreshToken)));
 }
 
 function isBloggerWritable() {
@@ -109,12 +110,43 @@ function parsePost(post) {
   }
 }
 
+async function listFeedPosts() {
+  const c = config();
+  if (!c.feedUrl) return null;
+  const feedUrl = new URL(c.feedUrl);
+  feedUrl.searchParams.set("alt", "json");
+  feedUrl.searchParams.set("max-results", String(PAGE_SIZE));
+  let startIndex = 1;
+  const posts = [];
+  while (true) {
+    feedUrl.searchParams.set("start-index", String(startIndex));
+    const response = await axios.get(feedUrl.href, {
+      timeout: REQUEST_TIMEOUT,
+      headers: { "User-Agent": "AnimeCatalogAPI/1.0" }
+    });
+    const feed = response.data && response.data.feed || {};
+    const entries = Array.isArray(feed.entry) ? feed.entry : [];
+    for (const entry of entries) {
+      posts.push({
+        id: entry.id && entry.id.$t || "",
+        title: entry.title && entry.title.$t || "",
+        content: entry.content && entry.content.$t || ""
+      });
+    }
+    const total = Number(feed.openSearch$totalResults && feed.openSearch$totalResults.$t);
+    startIndex += entries.length;
+    if (!entries.length || entries.length < PAGE_SIZE ||
+        (Number.isFinite(total) && total > 0 && startIndex > total)) break;
+  }
+  return posts;
+}
+
 async function loadBloggerDB() {
   if (!isBloggerConfigured()) {
     throw new Error("Blogger read access is not configured. Set BLOGGER_BLOG_ID and BLOGGER_API_KEY (or OAuth credentials).");
   }
 
-  const posts = await listPosts();
+  const posts = await listFeedPosts() || await listPosts();
   const db = { anime: [], episodes: [], movies: [] };
 
   for (const post of posts) {
