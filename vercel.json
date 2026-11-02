@@ -2,7 +2,13 @@
   "functions": {
     "server.js": {
       "includeFiles": "anime-db.json",
-      "maxDuration": 30
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sync",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
