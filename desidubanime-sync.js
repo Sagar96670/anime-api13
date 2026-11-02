@@ -1,6 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { loadDB, saveDB } = require("./database");
+const { isBloggerWritable, upsertCatalog } = require("./blogger-store");
 
 const BASE = "https://www.desidubanime.me";
 const USER_AGENT =
@@ -281,6 +282,15 @@ async function syncAll() {
   }
 
   saveDB(db);
+
+  let bloggerResult = null;
+  if (isBloggerWritable()) {
+    bloggerResult = await upsertCatalog(db);
+    console.log("[BLOGGER] Catalog saved:", bloggerResult);
+  } else {
+    console.log("[BLOGGER] Write credentials not configured; local JSON database was updated only.");
+  }
+
   console.log("DesiDubAnime sync complete:", {
     catalogPages: catalog.pages,
     anime: db.anime.length,
