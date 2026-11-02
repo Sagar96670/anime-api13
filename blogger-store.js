@@ -155,7 +155,7 @@ async function upsertCatalog(db) {
 
   for (const post of posts) {
     const record = parsePost(post);
-    if (record) existingByKey.set(record.type + ":" + String(record.id), post.id);
+    if (record) existingByKey.set(record.type + ":" + String(record.id), { id: post.id, content: post.content || "" });
   }
 
   const records = [];
@@ -180,14 +180,27 @@ async function upsertCatalog(db) {
 
   let inserted = 0;
   let updated = 0;
-  for (const record of records) {
+  let unchanged = 0;
+  let next = 0;
+  const concurrency = 5;
+  const workers = Array.from({ length: Math.min(concurrency, records.length) }, async () => {
+    while (true) {
+      const index = next++;
+      if (index >= records.length) return;
+      const record = records[index];
     const key = record.type + ":" + record.id;
-    const postId = existingByKey.get(key);
+    const existing = existingByKey.get(key);
+    const postId = existing && existing.id;
     const body = {
       title: String(record.anime.title || record.id),
       content: postContent(record),
       labels: [LABEL, record.type]
     };
+
+    if (postId && existing.content === postContent(record)) {
+      unchanged++;
+      continue;
+    }
 
     if (postId) {
       await axios.put(
@@ -206,12 +219,14 @@ async function upsertCatalog(db) {
           timeout: REQUEST_TIMEOUT
         }
       );
-      existingByKey.set(key, response.data && response.data.id);
+      existingByKey.set(key, { id: response.data && response.data.id, content: body.content });
       inserted++;
     }
-  }
+    }
+  });
+  await Promise.all(workers);
 
-  return { total: records.length, inserted, updated };
+  return { total: records.length, inserted, updated, unchanged };
 }
 
 module.exports = {
