@@ -143,7 +143,7 @@ async function listFeedPosts() {
 
 async function loadBloggerDB() {
   if (!isBloggerConfigured()) {
-    throw new Error("Blogger read access is not configured. Set BLOGGER_BLOG_ID and BLOGGER_API_KEY (or OAuth credentials).");
+    throw new Error("Blogger read access is not configured. Set BLOGGER_BLOG_ID and BLOGGER_FEED_URL (or BLOGGER_API_KEY/OAuth credentials).");
   }
 
   const posts = await listFeedPosts() || await listPosts();
