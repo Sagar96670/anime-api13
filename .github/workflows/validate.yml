@@ -1,0 +1,23 @@
+name: Validate Node.js project
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: |
+          node --check server.js
+          node --check blogger-store.js
+          node --check desidubanime-sync.js
+          node --check sync-anime.js
+          node --check fast-sync.js
+          node -e "JSON.parse(require('fs').readFileSync('vercel.json', 'utf8'))"

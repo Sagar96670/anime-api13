@@ -1,14 +1,101 @@
 const express = require("express");
+const axios = require("axios");
 const cors = require("cors");
 const { loadDB } = require("./database");
 const { syncAll } = require("./sync-anime");
 const { incrementalSync } = require("./fast-sync");
+const { isBloggerConfigured, loadBloggerDB } = require("./blogger-store");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+
+// Blogger is the primary catalog store when its environment variables are configured.
+let bloggerCatalogCache = null;
+let bloggerCatalogCacheAt = 0;
+const BLOGGER_CACHE_TTL_MS = Math.max(5000, Number(process.env.BLOGGER_CACHE_TTL_MS) || 60000);
+
+async function getCatalogDB() {
+  if (!isBloggerConfigured()) return loadDB();
+  const now = Date.now();
+  if (bloggerCatalogCache && now - bloggerCatalogCacheAt < BLOGGER_CACHE_TTL_MS) {
+    return bloggerCatalogCache;
+  }
+  const fresh = await loadBloggerDB();
+  bloggerCatalogCache = fresh;
+  bloggerCatalogCacheAt = now;
+  return fresh;
+}
+
+function clearBloggerCatalogCache() {
+  bloggerCatalogCache = null;
+  bloggerCatalogCacheAt = 0;
+}
+
+// Attach catalog data to API requests without changing any frontend/player files.
+app.use("/api", async (req, res, next) => {
+  if (req.path === "/hls-proxy" || req.path === "/v1/health" ||
+      req.path === "/v1/sync" || req.path === "/cron/sync") return next();
+  try {
+    req.catalogDB = await getCatalogDB();
+    return next();
+  } catch (error) {
+    console.error("[BLOGGER READ] Failed:", error.message);
+    return res.status(503).json({
+      status: false,
+      message: "Catalog storage is temporarily unavailable."
+    });
+  }
+});
+
+app.get("/api/v1/catalog", (req, res) => {
+  const db = req.catalogDB || loadDB();
+  const series = db.anime.map(item => ({ ...item, content_type: "series" }));
+  const movies = db.movies.map(item => ({ ...item, content_type: "movie" }));
+  const data = [...series, ...movies];
+  return res.json({
+    status: true,
+    source: isBloggerConfigured() ? "blogger-api-v3" : "local-json-fallback",
+    total: data.length,
+    series_total: series.length,
+    movies_total: movies.length,
+    data
+  });
+});
+
+app.get("/api/v1/health", (req, res) => res.json({
+  status: true,
+  storage: isBloggerConfigured() ? "blogger-api-v3" : "local-json-fallback",
+  blogger_configured: isBloggerConfigured(),
+  timestamp: new Date().toISOString()
+}));
+
+function authorizedSyncRequest(req, variable) {
+  const secret = String(process.env[variable] || "");
+  if (!secret) return false;
+  const supplied = String(req.headers.authorization || "").replace(/^Bearer\\s+/i, "");
+  return supplied.length === secret.length && supplied === secret;
+}
+
+async function performBloggerSync(req, res) {
+  if (!authorizedSyncRequest(req, "SYNC_SECRET") &&
+      !authorizedSyncRequest(req, "CRON_SECRET")) {
+    return res.status(401).json({ status: false, message: "Unauthorized sync request." });
+  }
+  try {
+    await syncAll();
+    clearBloggerCatalogCache();
+    return res.json({ status: true, message: "DesiDubAnime catalog sync completed." });
+  } catch (error) {
+    console.error("[BLOGGER SYNC] Failed:", error.message);
+    return res.status(500).json({ status: false, message: "Catalog sync failed." });
+  }
+}
+
+app.post("/api/v1/sync", performBloggerSync);
+app.get("/api/cron/sync", performBloggerSync);
 
 app.get("/", (req, res) => {
   res.json({
@@ -19,7 +106,7 @@ app.get("/", (req, res) => {
 
 // All anime
 app.get("/api/anime", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   res.json({
     status: true,
@@ -30,7 +117,7 @@ app.get("/api/anime", (req, res) => {
 
 // Single anime + all episodes
 app.get("/api/anime/:id", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -66,7 +153,7 @@ app.get("/api/anime/:id", (req, res) => {
 
 // Episodes + season filter + pagination
 app.get("/api/anime/:id/episodes", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -158,7 +245,7 @@ app.get("/api/anime/:id/episodes", (req, res) => {
 
 // Season list with episode counts
 app.get("/api/anime/:id/seasons", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const anime = db.anime.find(
     item => String(item.id) === String(req.params.id)
@@ -213,7 +300,7 @@ app.get("/api/anime/:id/seasons", (req, res) => {
 // DesiDubAnime episode playback is hosted on its own watch page.
 // Return the official watch-page URL; do not attempt to extract or proxy protected player media.
 app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const animeId = String(req.params.id);
   const season = Number(req.params.season);
   const episodeNumber = Number(req.params.episode);
@@ -260,7 +347,7 @@ app.get("/api/anime/:id/episode/:season/:episode/stream", (req, res) => {
 
 // Search the DesiDubAnime-backed catalog.
 app.get("/api/search", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const query = String(req.query.q || req.query.query || "").trim().toLowerCase();
   const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
 
@@ -296,7 +383,7 @@ app.get("/api/search", (req, res) => {
 
 // Series + Movies together
 app.get("/api/catalog", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const series = db.anime.map(item => ({
     ...item,
@@ -323,7 +410,7 @@ app.get("/api/catalog", (req, res) => {
 
 // All movies
 app.get("/api/movies", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   res.json({
     status: true,
@@ -334,7 +421,7 @@ app.get("/api/movies", (req, res) => {
 
 // Single movie
 app.get("/api/movies/:id", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
 
   const movie = db.movies.find(
     item => String(item.id) === String(req.params.id)
@@ -355,7 +442,7 @@ app.get("/api/movies/:id", (req, res) => {
 
 // Return the official DesiDubAnime movie/watch page rather than extracting protected media.
 app.get("/api/movies/:id/stream", (req, res) => {
-  const db = loadDB();
+  const db = req.catalogDB || loadDB();
   const movie = db.movies.find(item => String(item.id) === String(req.params.id));
 
   if (!movie) {
